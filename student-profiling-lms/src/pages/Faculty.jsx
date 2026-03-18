@@ -2,10 +2,13 @@ import { useState } from 'react'
 import { useData } from '../context/DataContext'
 import { UserCircle, Plus, Pencil, Trash2 } from 'lucide-react'
 import Modal from '../components/Modal'
+import FilterDropdown from '../components/FilterDropdown'
 
 export default function Faculty() {
   const { departments, crud } = useData()
   const [modal, setModal] = useState({ open: false, mode: 'add', item: null })
+  const [departmentFilter, setDepartmentFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
   const [form, setForm] = useState({
     firstName: '', lastName: '', departmentID: '', position: '', employmentStatus: 'Full-time',
     hireDate: '', email: '', contactNumber: '', officeLocation: '',
@@ -35,30 +38,81 @@ export default function Faculty() {
   const handleDelete = (id) => { if (confirm('Delete this faculty?')) crud.faculty.delete(id) }
 
   const faculty = crud.faculty.getAll()
+  const statuses = Array.from(new Set(faculty.map(f => f.employmentStatus).filter(Boolean))).sort((a, b) => a.localeCompare(b))
+  const filtered = faculty.filter(f => {
+    const matchesDept = !departmentFilter || String(f.departmentID) === departmentFilter
+    const matchesStatus = !statusFilter || f.employmentStatus === statusFilter
+    return matchesDept && matchesStatus
+  })
 
   return (
     <div className="page">
       <div className="page-header page-header-row">
         <h2>Faculty</h2>
-        <button className="btn btn-primary" onClick={openAdd}><Plus size={18} /> Add Faculty</button>
+        <div className="page-header-actions">
+          <FilterDropdown
+            ariaLabel="Filter by department"
+            value={departmentFilter}
+            onChange={setDepartmentFilter}
+            placeholder="All Departments"
+            options={[
+              { value: '', label: 'All Departments' },
+              ...departments.map(d => ({ value: String(d.departmentID), label: d.departmentName })),
+            ]}
+          />
+          <FilterDropdown
+            ariaLabel="Filter by employment status"
+            value={statusFilter}
+            onChange={setStatusFilter}
+            placeholder="All Statuses"
+            options={[
+              { value: '', label: 'All Statuses' },
+              ...statuses.map(s => ({ value: s, label: s })),
+            ]}
+          />
+          <button className="btn btn-primary" onClick={openAdd}><Plus size={18} /> Add Faculty</button>
+        </div>
       </div>
 
-      <div className="card-grid">
-        {faculty.map(f => (
-          <div key={f.facultyID} className="card-item">
-            <div className="card-icon"><UserCircle size={24} /></div>
-            <div className="card-content">
-              <h3>{f.firstName} {f.lastName}</h3>
-              <p>{f.position} • {f.employmentStatus}</p>
-              <p className="muted">{departments.find(d => d.departmentID === f.departmentID)?.departmentName}</p>
+      <div className="faculty-list">
+        {filtered.map(f => {
+          const depName = departments.find(d => d.departmentID === f.departmentID)?.departmentName || '-'
+          return (
+            <div key={f.facultyID} className="faculty-row">
+              <div className="faculty-icon" aria-hidden="true">
+                <UserCircle size={20} />
+              </div>
+              <div className="faculty-info">
+                <div className="faculty-topline">
+                  <h3 className="faculty-name">{f.firstName} {f.lastName}</h3>
+                </div>
+                <div className="faculty-meta">
+                  <span>{f.position}</span>
+                  <span className="faculty-dot" aria-hidden="true">•</span>
+                  <span className="muted">{depName}</span>
+                </div>
+              </div>
+              <div className="faculty-right">
+                <span className="faculty-status">{f.employmentStatus}</span>
+                <div className="faculty-actions">
+                  <button className="btn-icon" onClick={() => openEdit(f)} aria-label={`Edit ${f.firstName} ${f.lastName}`}>
+                    <Pencil size={16} />
+                  </button>
+                  <button className="btn-icon btn-danger" onClick={() => handleDelete(f.facultyID)} aria-label={`Delete ${f.firstName} ${f.lastName}`}>
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
             </div>
-            <div className="card-actions">
-              <button className="btn-icon" onClick={() => openEdit(f)}><Pencil size={16} /></button>
-              <button className="btn-icon btn-danger" onClick={() => handleDelete(f.facultyID)}><Trash2 size={16} /></button>
-            </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
+
+      {!filtered.length && (
+        <div className="empty-state">
+          <p>No faculty match your filters.</p>
+        </div>
+      )}
 
       <Modal title={modal.mode === 'add' ? 'Add Faculty' : 'Edit Faculty'} open={modal.open} onClose={() => setModal({ open: false })}>
         <form onSubmit={handleSubmit} className="form">

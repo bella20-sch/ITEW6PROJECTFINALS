@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { useData } from '../context/DataContext'
-import { Building2, Plus, Pencil, Trash2 } from 'lucide-react'
+import { Building2, Plus, Pencil, Trash2, Search } from 'lucide-react'
 import Modal from '../components/Modal'
 
 export default function Departments() {
   const { crud } = useData()
   const [modal, setModal] = useState({ open: false, mode: 'add', item: null })
   const [form, setForm] = useState({ departmentName: '', officeLocation: '', contactNumber: '' })
+  const [search, setSearch] = useState('')
 
   const openAdd = () => {
     setForm({ departmentName: '', officeLocation: '', contactNumber: '' })
@@ -25,32 +26,74 @@ export default function Departments() {
   const handleDelete = (id) => { if (confirm('Delete this department?')) crud.departments.delete(id) }
 
   const deps = crud.departments.getAll()
+  const query = search.trim().toLowerCase()
+  const filtered = query
+    ? deps.filter(d => {
+        const hay = `${d.departmentName} ${d.officeLocation} ${d.contactNumber || ''}`.toLowerCase()
+        return hay.includes(query)
+      })
+    : deps
 
   return (
     <div className="page">
-      <div className="page-header page-header-row">
+      <div className="page-header">
         <h2>Departments</h2>
-        <button className="btn btn-primary" onClick={openAdd}>
-          <Plus size={18} /> Add Department
-        </button>
+        <div className="page-header-actions">
+          <div className="search-box">
+            <Search size={18} />
+            <input
+              type="search"
+              placeholder="Search departments..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="search-input"
+            />
+          </div>
+          <button className="btn btn-primary" onClick={openAdd}>
+            <Plus size={18} /> Add Department
+          </button>
+        </div>
       </div>
 
-      <div className="card-grid">
-        {deps.map(d => (
-          <div key={d.departmentID} className="card-item">
-            <div className="card-icon"><Building2 size={24} /></div>
-            <div className="card-content">
-              <h3>{d.departmentName}</h3>
-              <p>{d.officeLocation}</p>
-              <p className="muted">{d.contactNumber}</p>
+      <div className="dept-list">
+        {filtered.map(d => (
+          <div key={d.departmentID} className="dept-row">
+            <div className="dept-icon" aria-hidden="true">
+              <Building2 size={20} />
             </div>
-            <div className="card-actions">
-              <button className="btn-icon" onClick={() => openEdit(d)}><Pencil size={16} /></button>
-              <button className="btn-icon btn-danger" onClick={() => handleDelete(d.departmentID)}><Trash2 size={16} /></button>
+            <div className="dept-info">
+              <div className="dept-topline">
+                <h3 className="dept-name">{d.departmentName}</h3>
+              </div>
+              <div className="dept-meta">
+                <span>{d.officeLocation}</span>
+                {d.contactNumber ? (
+                  <>
+                    <span className="dept-dot" aria-hidden="true">•</span>
+                    <span className="muted">{d.contactNumber}</span>
+                  </>
+                ) : null}
+              </div>
+            </div>
+            <div className="dept-right">
+              <div className="dept-actions">
+                <button className="btn-icon" onClick={() => openEdit(d)} aria-label={`Edit ${d.departmentName}`}>
+                  <Pencil size={16} />
+                </button>
+                <button className="btn-icon btn-danger" onClick={() => handleDelete(d.departmentID)} aria-label={`Delete ${d.departmentName}`}>
+                  <Trash2 size={16} />
+                </button>
+              </div>
             </div>
           </div>
         ))}
       </div>
+
+      {filtered.length === 0 && (
+        <div className="empty-state">
+          <p>No departments match your search.</p>
+        </div>
+      )}
 
       <Modal title={modal.mode === 'add' ? 'Add Department' : 'Edit Department'} open={modal.open} onClose={() => setModal({ open: false })}>
         <form onSubmit={handleSubmit} className="form">

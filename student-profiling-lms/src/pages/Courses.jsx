@@ -2,11 +2,13 @@ import { useState } from 'react'
 import { useData } from '../context/DataContext'
 import { BookOpen, Plus, Pencil, Trash2 } from 'lucide-react'
 import Modal from '../components/Modal'
+import FilterDropdown from '../components/FilterDropdown'
 
 export default function Courses() {
   const { departments, crud } = useData()
   const [modal, setModal] = useState({ open: false, mode: 'add', item: null })
   const [form, setForm] = useState({ courseCode: '', courseName: '', totalUnits: '', departmentID: '' })
+  const [departmentFilter, setDepartmentFilter] = useState('')
 
   const openAdd = () => {
     setForm({ courseCode: '', courseName: '', totalUnits: '', departmentID: departments[0]?.departmentID || '' })
@@ -26,37 +28,68 @@ export default function Courses() {
   const handleDelete = (id) => { if (confirm('Delete this course?')) crud.courses.delete(id) }
 
   const courses = crud.courses.getAll()
+  const filtered = departmentFilter ? courses.filter(c => String(c.departmentID) === departmentFilter) : courses
 
   return (
     <div className="page">
       <div className="page-header page-header-row">
         <h2>Courses</h2>
-        <button className="btn btn-primary" onClick={openAdd}>
-          <Plus size={18} /> Add Course
-        </button>
+        <div className="page-header-actions">
+          <FilterDropdown
+            ariaLabel="Filter by department"
+            value={departmentFilter}
+            onChange={setDepartmentFilter}
+            placeholder="All Departments"
+            options={[
+              { value: '', label: 'All Departments' },
+              ...departments.map(d => ({ value: String(d.departmentID), label: d.departmentName })),
+            ]}
+          />
+          <button className="btn btn-primary" onClick={openAdd}>
+            <Plus size={18} /> Add Course
+          </button>
+        </div>
       </div>
 
-      <div className="table-card">
-        <table className="data-table">
-          <thead>
-            <tr><th>Code</th><th>Name</th><th>Units</th><th>Department</th><th></th></tr>
-          </thead>
-          <tbody>
-            {courses.map(c => (
-              <tr key={c.courseID}>
-                <td><strong>{c.courseCode}</strong></td>
-                <td>{c.courseName}</td>
-                <td>{c.totalUnits}</td>
-                <td>{departments.find(d => d.departmentID === c.departmentID)?.departmentName || '-'}</td>
-                <td>
-                  <button className="btn-icon" onClick={() => openEdit(c)}><Pencil size={16} /></button>
-                  <button className="btn-icon btn-danger" onClick={() => handleDelete(c.courseID)}><Trash2 size={16} /></button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="course-list">
+        {filtered.map(c => {
+          const depName = departments.find(d => d.departmentID === c.departmentID)?.departmentName || '-'
+          return (
+            <div key={c.courseID} className="course-row">
+              <div className="course-icon" aria-hidden="true">
+                <BookOpen size={20} />
+              </div>
+              <div className="course-info">
+                <div className="course-topline">
+                  <h3 className="course-name">{c.courseName}</h3>
+                </div>
+                <div className="course-meta">
+                  <span>{depName}</span>
+                  <span className="course-dot" aria-hidden="true">•</span>
+                  <span>{c.totalUnits} units</span>
+                </div>
+              </div>
+              <div className="course-right">
+                <span className="course-code">{c.courseCode}</span>
+                <div className="course-actions">
+                  <button className="btn-icon" onClick={() => openEdit(c)} aria-label={`Edit ${c.courseCode}`}>
+                    <Pencil size={16} />
+                  </button>
+                  <button className="btn-icon btn-danger" onClick={() => handleDelete(c.courseID)} aria-label={`Delete ${c.courseCode}`}>
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )
+        })}
       </div>
+
+      {!filtered.length && (
+        <div className="empty-state">
+          <p>No courses match your filter.</p>
+        </div>
+      )}
 
       <Modal title={modal.mode === 'add' ? 'Add Course' : 'Edit Course'} open={modal.open} onClose={() => setModal({ open: false })}>
         <form onSubmit={handleSubmit} className="form">
