@@ -1,5 +1,6 @@
-import { useLocation } from 'react-router-dom'
-import { Menu } from 'lucide-react'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { LogOut, Menu, Shield } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
 
 const pageTitles = {
   '/': 'Dashboard',
@@ -12,6 +13,8 @@ const pageTitles = {
 
 export default function Header({ onMenuClick }) {
   const location = useLocation()
+  const navigate = useNavigate()
+  const { currentUser, logout } = useAuth()
   const path = location.pathname
   const title = path.startsWith('/students/') ? 'Student Profile' : pageTitles[path] || 'Student Profiling LMS'
 
@@ -23,6 +26,22 @@ export default function Header({ onMenuClick }) {
       <h1 className="header-title">{title}</h1>
       <div className="header-actions">
         <span className="header-badge">School Year 2024-2025</span>
+        {currentUser && (
+          <span className="header-user">
+            <Shield size={16} />
+            {currentUser.firstName} {currentUser.lastName}
+          </span>
+        )}
+        <button
+          className="btn btn-outline header-logout"
+          onClick={() => {
+            logout()
+            navigate('/login', { replace: true })
+          }}
+        >
+          <LogOut size={16} />
+          <span>Logout</span>
+        </button>
       </div>
     </header>
   )
