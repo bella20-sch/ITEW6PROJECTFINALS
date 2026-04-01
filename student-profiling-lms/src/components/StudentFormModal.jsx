@@ -13,11 +13,15 @@ export default function StudentFormModal({ open, onClose, courses, departments, 
   const form = student ? { ...defaultStudent, ...student } : { ...defaultStudent, courseID: courses[0]?.courseID, departmentID: departments[0]?.departmentID }
 
   const [data, setData] = React.useState(form)
+  const [busy, setBusy] = React.useState(false)
+  const [error, setError] = React.useState('')
   React.useEffect(() => { setData(form) }, [open, student, courses, departments])
 
   const studentFields = ['firstName', 'middleName', 'lastName', 'suffix', 'gender', 'birthDate', 'birthPlace', 'nationality', 'civilStatus', 'contactNumber', 'email', 'address', 'yearLevel', 'section', 'studentType', 'enrollmentStatus', 'dateEnrolled', 'courseID', 'departmentID']
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
+    setBusy(true)
+    setError('')
     const payload = {}
     studentFields.forEach(f => {
       let v = data[f]
@@ -25,13 +29,20 @@ export default function StudentFormModal({ open, onClose, courses, departments, 
       if (f === 'contactNumber' && v) v = Number(v)
       payload[f] = v
     })
-    onSave(payload)
-    onClose()
+    try {
+      await onSave(payload)
+      onClose()
+    } catch (err) {
+      setError(err?.message || 'Save failed.')
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
     <Modal title={isEdit ? 'Edit Student' : 'Add Student'} open={open} onClose={onClose}>
       <form onSubmit={handleSubmit} className="form form-wide">
+        {error && <div className="auth-alert" style={{ marginBottom: 12 }}>{error}</div>}
         <div className="form-section">
           <h4>Basic Info</h4>
           <div className="form-row-2">
@@ -91,7 +102,7 @@ export default function StudentFormModal({ open, onClose, courses, departments, 
         </div>
         <div className="form-actions">
           <button type="button" className="btn btn-outline" onClick={onClose}>Cancel</button>
-          <button type="submit" className="btn btn-primary">Save</button>
+          <button type="submit" className="btn btn-primary" disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>
         </div>
       </form>
     </Modal>

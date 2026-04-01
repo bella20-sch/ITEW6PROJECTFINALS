@@ -1,10 +1,11 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { apiFetch } from '../lib/api'
 
 const AuthContext = createContext(null)
 
 const STORAGE_KEYS = {
-  users: 'sp_users',
   current: 'sp_currentUser',
+  token: 'sp_token',
 }
 
 function safeJsonParse(value, fallback) {
@@ -15,12 +16,6 @@ function safeJsonParse(value, fallback) {
   }
 }
 
-function loadUsers() {
-  const raw = localStorage.getItem(STORAGE_KEYS.users)
-  const users = safeJsonParse(raw, [])
-  return Array.isArray(users) ? users : []
-}
-
 function loadCurrentUser() {
   const raw = localStorage.getItem(STORAGE_KEYS.current)
   const user = safeJsonParse(raw, null)
@@ -28,22 +23,17 @@ function loadCurrentUser() {
 }
 
 export function AuthProvider({ children }) {
-  const [users, setUsers] = useState([])
   const [currentUser, setCurrentUser] = useState(null)
+  const [token, setToken] = useState('')
   const [ready, setReady] = useState(false)
 
   useEffect(() => {
-    const u = loadUsers()
     const c = loadCurrentUser()
-    setUsers(u)
+    const t = localStorage.getItem(STORAGE_KEYS.token) || ''
     setCurrentUser(c)
+    setToken(t)
     setReady(true)
   }, [])
-
-  useEffect(() => {
-    if (!ready) return
-    localStorage.setItem(STORAGE_KEYS.users, JSON.stringify(users))
-  }, [users, ready])
 
   useEffect(() => {
     if (!ready) return
@@ -51,50 +41,56 @@ export function AuthProvider({ children }) {
     else localStorage.removeItem(STORAGE_KEYS.current)
   }, [currentUser, ready])
 
+  useEffect(() => {
+    if (!ready) return
+    if (token) localStorage.setItem(STORAGE_KEYS.token, token)
+    else localStorage.removeItem(STORAGE_KEYS.token)
+  }, [token, ready])
+
   const value = useMemo(() => {
-    const signup = ({ firstName, lastName, email, password }) => {
-      const normalizedEmail = String(email).trim().toLowerCase()
-      if (users.some(u => u.email === normalizedEmail)) {
-        return { ok: false, error: 'Email already exists.' }
+    const signup = async ({ email, password }) => {
+      try {
+        const res = await apiFetch('/api/auth/signup', { method: 'POST', body: { email, password } })
+        setToken(res.token || '')
+        setCurrentUser(res.user || null)
+        return { ok: true }
+      } catch (e) {
+        return { ok: false, error: e?.message || 'Signup failed.' }
       }
-
-      const newUser = {
-        id: crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-        firstName: String(firstName).trim(),
-        lastName: String(lastName).trim(),
-        email: normalizedEmail,
-        password: String(password),
-        role: 'Admin',
-        createdAt: new Date().toISOString(),
-      }
-
-      setUsers(prev => [...prev, newUser])
-      setCurrentUser({ id: newUser.id, firstName: newUser.firstName, lastName: newUser.lastName, email: newUser.email, role: newUser.role })
-      return { ok: true }
     }
 
-    const login = ({ email, password }) => {
-      const normalizedEmail = String(email).trim().toLowerCase()
-      const user = users.find(u => u.email === normalizedEmail)
-      if (!user || user.password !== String(password)) {
-        return { ok: false, error: 'Invalid email or password.' }
+    const login = async ({ email, password }) => {
+      try {
+        const res = await apiFetch('/api/auth/login', { method: 'POST', body: { email, password } })
+        setToken(res.token || '')
+        setCurrentUser(res.user || null)
+        return { ok: true }
+      } catch (e) {
+        return { ok: false, error: e?.message || 'Login failed.' }
       }
-      setCurrentUser({ id: user.id, firstName: user.firstName, lastName: user.lastName, email: user.email, role: user.role })
-      return { ok: true }
     }
 
-    const logout = () => setCurrentUser(null)
+    const logout = async () => {
+      try {
+        if (token) await apiFetch('/api/auth/logout', { method: 'POST', token })
+      } catch {
+        // ignore
+      } finally {
+        setToken('')
+        setCurrentUser(null)
+      }
+    }
 
     return {
       ready,
-      users,
+      token,
       currentUser,
       isAuthenticated: !!currentUser,
       signup,
       login,
       logout,
     }
-  }, [users, currentUser, ready])
+  }, [currentUser, ready, token])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

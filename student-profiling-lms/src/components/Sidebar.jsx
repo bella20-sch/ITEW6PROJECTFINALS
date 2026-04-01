@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, Users, Building2, BookOpen, UserCircle, FileBarChart, GraduationCap, X } from 'lucide-react'
+import { LayoutDashboard, Users, Building2, BookOpen, UserCircle, FileBarChart, GraduationCap, X, Shield } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
 
 const navItems = [
   { path: '', icon: LayoutDashboard, label: 'Dashboard' },
@@ -11,6 +12,11 @@ const navItems = [
 ]
 
 export default function Sidebar({ open, onClose }) {
+  const { currentUser } = useAuth()
+  const items = currentUser?.role === 'Admin'
+    ? [...navItems, { path: 'admin', icon: Shield, label: 'MIS/Admin' }]
+    : navItems
+
   return (
     <>
       <div className={`sidebar-overlay ${open ? 'active' : ''}`} onClick={onClose} aria-hidden="true" />
@@ -23,7 +29,7 @@ export default function Sidebar({ open, onClose }) {
         <span className="sidebar-title">Student Profiling LMS</span>
       </div>
       <nav className="sidebar-nav">
-        {navItems.map(({ path, icon: Icon, label }) => (
+        {items.map(({ path, icon: Icon, label }) => (
           <NavLink
             key={path}
             to={path === '' ? '/' : `/${path}`}

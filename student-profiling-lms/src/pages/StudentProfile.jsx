@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import {
   User, Mail, Calendar, Award, AlertTriangle, BookOpen, Briefcase, Heart, Users,
@@ -20,13 +20,49 @@ function ProfileSection({ icon: Icon, title, children, action }) {
 export default function StudentProfile() {
   const { id } = useParams()
   const { crud, courses, departments } = useData()
-  const student = crud.students.getOne(id)
+  const [student, setStudent] = useState(() => crud.students.getOne(id))
+  const [loading, setLoading] = useState(!student)
+  const [loadError, setLoadError] = useState('')
   const [editModal, setEditModal] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    const existing = crud.students.getOne(id)
+    if (existing) {
+      setStudent(existing)
+      setLoading(false)
+      return
+    }
+
+    setLoading(true)
+    setLoadError('')
+    crud.students.fetchOne(id)
+      .then((p) => {
+        if (cancelled) return
+        setStudent(p)
+        setLoading(false)
+      })
+      .catch((e) => {
+        if (cancelled) return
+        setLoadError(e?.message || 'Failed to load student.')
+        setLoading(false)
+      })
+
+    return () => { cancelled = true }
+  }, [id])
+
+  if (loading) {
+    return (
+      <div className="page">
+        <p className="muted">Loading student profile…</p>
+      </div>
+    )
+  }
 
   if (!student) {
     return (
       <div className="page">
-        <p>Student not found. <Link to="/students">Back to Students</Link></p>
+        <p>{loadError || 'Student not found.'} <Link to="/students">Back to Students</Link></p>
       </div>
     )
   }
@@ -36,11 +72,10 @@ export default function StudentProfile() {
   const latestAcademic = student.academicHistory[student.academicHistory.length - 1]
   const gpa = latestAcademic?.gpa
 
-  const handleDelete = () => {
-    if (confirm('Delete this student? All related records will be removed.')) {
-      crud.students.delete(student.studentID)
-      window.location.href = '/students'
-    }
+  const handleDelete = async () => {
+    if (!confirm('Delete this student? All related records will be removed.')) return
+    await crud.students.delete(student.studentID)
+    window.location.href = '/students'
   }
 
   return (
@@ -169,7 +204,11 @@ export default function StudentProfile() {
         student={student}
         courses={courses}
         departments={departments}
-        onSave={(s) => { crud.students.update(student.studentID, s); setEditModal(false) }}
+        onSave={async (s) => {
+          const updated = await crud.students.update(student.studentID, s)
+          setStudent(updated)
+          setEditModal(false)
+        }}
       />
     </div>
   )

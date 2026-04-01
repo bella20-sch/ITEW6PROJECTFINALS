@@ -17,13 +17,13 @@ export default function Departments() {
     setForm({ departmentName: d.departmentName, officeLocation: d.officeLocation, contactNumber: d.contactNumber || '' })
     setModal({ open: true, mode: 'edit', item: d })
   }
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    if (modal.mode === 'add') crud.departments.create(form)
-    else crud.departments.update(modal.item.departmentID, form)
+    if (modal.mode === 'add') await crud.departments.create(form)
+    else await crud.departments.update(modal.item.departmentID, form)
     setModal({ open: false })
   }
-  const handleDelete = (id) => { if (confirm('Delete this department?')) crud.departments.delete(id) }
+  const handleDelete = async (id) => { if (confirm('Delete this department?')) await crud.departments.delete(id) }
 
   const deps = crud.departments.getAll()
   const query = search.trim().toLowerCase()

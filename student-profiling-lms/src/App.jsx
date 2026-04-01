@@ -9,13 +9,13 @@ import Courses from './pages/Courses'
 import Faculty from './pages/Faculty'
 import Reports from './pages/Reports'
 import Login from './pages/Login'
-import Signup from './pages/Signup'
+import Admin from './pages/Admin'
+import RequireAdmin from './components/RequireAdmin'
 
 export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
-      <Route path="/signup" element={<Signup />} />
       <Route
         path="/"
         element={
@@ -31,6 +31,14 @@ export default function App() {
         <Route path="courses" element={<Courses />} />
         <Route path="faculty" element={<Faculty />} />
         <Route path="reports" element={<Reports />} />
+        <Route
+          path="admin"
+          element={
+            <RequireAdmin>
+              <Admin />
+            </RequireAdmin>
+          }
+        />
       </Route>
     </Routes>
   )

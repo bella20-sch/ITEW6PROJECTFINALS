@@ -1,114 +1,148 @@
-import { createContext, useContext, useState } from 'react'
-import {
-  initialDepartments, initialCourses, initialFaculty, initialStudents,
-  initialAcademicHistory, initialMedicalHistory, initialGuardians,
-  initialSkills, initialAffiliations, initialViolations,
-} from '../data/initialData'
+import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { apiFetch } from '../lib/api'
+import { useAuth } from './AuthContext'
 
 const DataContext = createContext(null)
 
 export function DataProvider({ children }) {
-  const [departments, setDepartments] = useState(initialDepartments)
-  const [courses, setCourses] = useState(initialCourses)
-  const [faculty, setFaculty] = useState(initialFaculty)
-  const [students, setStudents] = useState(initialStudents)
-  const [academicHistory, setAcademicHistory] = useState(initialAcademicHistory)
-  const [medicalHistory, setMedicalHistory] = useState(initialMedicalHistory)
-  const [guardians, setGuardians] = useState(initialGuardians)
-  const [skills, setSkills] = useState(initialSkills)
-  const [affiliations, setAffiliations] = useState(initialAffiliations)
-  const [violations, setViolations] = useState(initialViolations)
+  const { token, isAuthenticated } = useAuth()
 
-  const nextId = (items, key) => Math.max(0, ...items.map(i => i[key])) + 1
+  const [ready, setReady] = useState(false)
+  const [departments, setDepartments] = useState([])
+  const [courses, setCourses] = useState([])
+  const [faculty, setFaculty] = useState([])
+  const [students, setStudents] = useState([])
+  const [profiles, setProfiles] = useState({})
 
-  // Helpers to get related data for a student
-  const getStudentProfile = (studentID) => {
-    const student = students.find(s => s.studentID === Number(studentID))
-    if (!student) return null
-    return {
-      ...student,
-      academicHistory: academicHistory.filter(a => a.studentID === student.studentID),
-      medicalHistory: medicalHistory.filter(m => m.studentID === student.studentID),
-      guardians: guardians.filter(g => g.studentID === student.studentID),
-      skills: skills.filter(s => s.studentID === student.studentID),
-      affiliations: affiliations.filter(a => a.studentID === student.studentID),
-      violations: violations.filter(v => v.studentID === student.studentID),
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      if (!isAuthenticated || !token) {
+        setReady(false)
+        setDepartments([])
+        setCourses([])
+        setFaculty([])
+        setStudents([])
+        setProfiles({})
+        return
+      }
+
+      try {
+        const [deps, crs, fac, studs] = await Promise.all([
+          apiFetch('/api/meta/departments', { token }),
+          apiFetch('/api/meta/courses', { token }),
+          apiFetch('/api/meta/faculty', { token }),
+          apiFetch('/api/students', { token }),
+        ])
+        if (cancelled) return
+        setDepartments(Array.isArray(deps) ? deps : [])
+        setCourses(Array.isArray(crs) ? crs : [])
+        setFaculty(Array.isArray(fac) ? fac : [])
+        setStudents(Array.isArray(studs) ? studs : [])
+        setReady(true)
+      } catch {
+        if (cancelled) return
+        setReady(false)
+      }
     }
+
+    load()
+    return () => { cancelled = true }
+  }, [isAuthenticated, token])
+
+  const fetchStudentProfile = async (studentID) => {
+    const id = Number(studentID)
+    const p = await apiFetch(`/api/students/${id}`, { token })
+    setProfiles(prev => ({ ...prev, [id]: p }))
+    return p
   }
 
-  const crud = {
+  const crud = useMemo(() => ({
     departments: {
       getAll: () => departments,
-      create: (d) => setDepartments(prev => [...prev, { ...d, departmentID: nextId(prev, 'departmentID') }]),
-      update: (id, d) => setDepartments(prev => prev.map(x => x.departmentID === id ? { ...x, ...d } : x)),
-      delete: (id) => {
-        setDepartments(prev => prev.filter(x => x.departmentID !== id))
-        setCourses(prev => prev.filter(x => x.departmentID !== id))
-        setFaculty(prev => prev.filter(x => x.departmentID !== id))
-        setStudents(prev => prev.filter(x => x.departmentID !== id))
+      create: async (payload) => {
+        const created = await apiFetch('/api/meta/departments', { token, method: 'POST', body: payload })
+        setDepartments(prev => [...prev, created])
+        return created
+      },
+      update: async (id, payload) => {
+        const updated = await apiFetch(`/api/meta/departments/${Number(id)}`, { token, method: 'PUT', body: payload })
+        setDepartments(prev => prev.map(d => d.departmentID === updated.departmentID ? updated : d))
+        return updated
+      },
+      delete: async (id) => {
+        const did = Number(id)
+        await apiFetch(`/api/meta/departments/${did}`, { token, method: 'DELETE' })
+        setDepartments(prev => prev.filter(d => d.departmentID !== did))
       },
     },
     courses: {
       getAll: () => courses,
-      create: (c) => setCourses(prev => [...prev, { ...c, courseID: nextId(prev, 'courseID') }]),
-      update: (id, c) => setCourses(prev => prev.map(x => x.courseID === id ? { ...x, ...c } : x)),
-      delete: (id) => setCourses(prev => prev.filter(x => x.courseID !== id)),
+      create: async (payload) => {
+        const created = await apiFetch('/api/meta/courses', { token, method: 'POST', body: payload })
+        setCourses(prev => [...prev, created])
+        return created
+      },
+      update: async (id, payload) => {
+        const updated = await apiFetch(`/api/meta/courses/${Number(id)}`, { token, method: 'PUT', body: payload })
+        setCourses(prev => prev.map(c => c.courseID === updated.courseID ? updated : c))
+        return updated
+      },
+      delete: async (id) => {
+        const cid = Number(id)
+        await apiFetch(`/api/meta/courses/${cid}`, { token, method: 'DELETE' })
+        setCourses(prev => prev.filter(c => c.courseID !== cid))
+      },
     },
     faculty: {
       getAll: () => faculty,
-      create: (f) => setFaculty(prev => [...prev, { ...f, facultyID: nextId(prev, 'facultyID') }]),
-      update: (id, f) => setFaculty(prev => prev.map(x => x.facultyID === id ? { ...x, ...f } : x)),
-      delete: (id) => setFaculty(prev => prev.filter(x => x.facultyID !== id)),
+      create: async (payload) => {
+        const created = await apiFetch('/api/meta/faculty', { token, method: 'POST', body: payload })
+        setFaculty(prev => [...prev, created])
+        return created
+      },
+      update: async (id, payload) => {
+        const updated = await apiFetch(`/api/meta/faculty/${Number(id)}`, { token, method: 'PUT', body: payload })
+        setFaculty(prev => prev.map(f => f.facultyID === updated.facultyID ? updated : f))
+        return updated
+      },
+      delete: async (id) => {
+        const fid = Number(id)
+        await apiFetch(`/api/meta/faculty/${fid}`, { token, method: 'DELETE' })
+        setFaculty(prev => prev.filter(f => f.facultyID !== fid))
+      },
     },
     students: {
       getAll: () => students,
-      getOne: (id) => getStudentProfile(id),
-      create: (s) => setStudents(prev => [...prev, { ...s, studentID: nextId(prev, 'studentID') }]),
-      update: (id, s) => setStudents(prev => prev.map(x => x.studentID === id ? { ...x, ...s } : x)),
-      delete: (id) => {
-        setStudents(prev => prev.filter(x => x.studentID !== id))
-        setAcademicHistory(prev => prev.filter(x => x.studentID !== id))
-        setMedicalHistory(prev => prev.filter(x => x.studentID !== id))
-        setGuardians(prev => prev.filter(x => x.studentID !== id))
-        setSkills(prev => prev.filter(x => x.studentID !== id))
-        setAffiliations(prev => prev.filter(x => x.studentID !== id))
-        setViolations(prev => prev.filter(x => x.studentID !== id))
+      getOne: (id) => profiles[Number(id)] || null,
+      fetchOne: fetchStudentProfile,
+      create: async (payload) => {
+        const created = await apiFetch('/api/students', { token, method: 'POST', body: payload })
+        setStudents(prev => [...prev, created])
+        setProfiles(prev => ({ ...prev, [created.studentID]: created }))
+        return created
+      },
+      update: async (id, payload) => {
+        const updated = await apiFetch(`/api/students/${Number(id)}`, { token, method: 'PUT', body: payload })
+        setStudents(prev => prev.map(s => s.studentID === updated.studentID ? updated : s))
+        setProfiles(prev => ({ ...prev, [updated.studentID]: updated }))
+        return updated
+      },
+      delete: async (id) => {
+        const sid = Number(id)
+        await apiFetch(`/api/students/${sid}`, { token, method: 'DELETE' })
+        setStudents(prev => prev.filter(s => s.studentID !== sid))
+        setProfiles(prev => {
+          const next = { ...prev }
+          delete next[sid]
+          return next
+        })
       },
     },
-    academicHistory: {
-      add: (a) => setAcademicHistory(prev => [...prev, { ...a, academicID: nextId(prev, 'academicID') }]),
-      update: (id, a) => setAcademicHistory(prev => prev.map(x => x.academicID === id ? { ...x, ...a } : x)),
-      delete: (id) => setAcademicHistory(prev => prev.filter(x => x.academicID !== id)),
-    },
-    medicalHistory: {
-      add: (m) => setMedicalHistory(prev => [...prev, { ...m, medicalID: nextId(prev, 'medicalID') }]),
-      update: (id, m) => setMedicalHistory(prev => prev.map(x => x.medicalID === id ? { ...x, ...m } : x)),
-      delete: (id) => setMedicalHistory(prev => prev.filter(x => x.medicalID !== id)),
-    },
-    guardians: {
-      add: (g) => setGuardians(prev => [...prev, { ...g, guardianID: nextId(prev, 'guardianID') }]),
-      update: (id, g) => setGuardians(prev => prev.map(x => x.guardianID === id ? { ...x, ...g } : x)),
-      delete: (id) => setGuardians(prev => prev.filter(x => x.guardianID !== id)),
-    },
-    skills: {
-      add: (s) => setSkills(prev => [...prev, { ...s, skillID: nextId(prev, 'skillID') }]),
-      update: (id, s) => setSkills(prev => prev.map(x => x.skillID === id ? { ...x, ...s } : x)),
-      delete: (id) => setSkills(prev => prev.filter(x => x.skillID !== id)),
-    },
-    affiliations: {
-      add: (a) => setAffiliations(prev => [...prev, { ...a, affiliationID: nextId(prev, 'affiliationID') }]),
-      update: (id, a) => setAffiliations(prev => prev.map(x => x.affiliationID === id ? { ...x, ...a } : x)),
-      delete: (id) => setAffiliations(prev => prev.filter(x => x.affiliationID !== id)),
-    },
-    violations: {
-      add: (v) => setViolations(prev => [...prev, { ...v, violationID: nextId(prev, 'violationID') }]),
-      update: (id, v) => setViolations(prev => prev.map(x => x.violationID === id ? { ...x, ...v } : x)),
-      delete: (id) => setViolations(prev => prev.filter(x => x.violationID !== id)),
-    },
-  }
+  }), [departments, courses, faculty, students, profiles, token])
 
   return (
-    <DataContext.Provider value={{ departments, courses, faculty, students, academicHistory, medicalHistory, guardians, skills, affiliations, violations, crud }}>
+    <DataContext.Provider value={{ ready, departments, courses, faculty, students, crud }}>
       {children}
     </DataContext.Provider>
   )

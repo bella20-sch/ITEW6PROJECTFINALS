@@ -18,14 +18,14 @@ export default function Courses() {
     setForm({ courseCode: c.courseCode, courseName: c.courseName, totalUnits: c.totalUnits, departmentID: c.departmentID })
     setModal({ open: true, mode: 'edit', item: c })
   }
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     const payload = { ...form, totalUnits: Number(form.totalUnits), departmentID: Number(form.departmentID) }
-    if (modal.mode === 'add') crud.courses.create(payload)
-    else crud.courses.update(modal.item.courseID, payload)
+    if (modal.mode === 'add') await crud.courses.create(payload)
+    else await crud.courses.update(modal.item.courseID, payload)
     setModal({ open: false })
   }
-  const handleDelete = (id) => { if (confirm('Delete this course?')) crud.courses.delete(id) }
+  const handleDelete = async (id) => { if (confirm('Delete this course?')) await crud.courses.delete(id) }
 
   const courses = crud.courses.getAll()
   const filtered = departmentFilter ? courses.filter(c => String(c.departmentID) === departmentFilter) : courses

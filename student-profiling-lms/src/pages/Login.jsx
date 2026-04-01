@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { GraduationCap, Lock, Mail } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
@@ -32,7 +32,7 @@ export default function Login() {
       return
     }
 
-    const res = login({ email, password: form.password })
+    const res = await login({ email, password: form.password })
     if (!res.ok) {
       setError(res.error || 'Login failed.')
       setBusy(false)
@@ -89,8 +89,7 @@ export default function Login() {
           </button>
 
           <div className="auth-footer">
-            <span className="muted">No account?</span>
-            <Link className="auth-link" to="/signup">Create one</Link>
+            <span className="muted">Accounts are created by MIS/Admin.</span>
           </div>
         </form>
       </div>

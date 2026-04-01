@@ -92,7 +92,16 @@ export default function Students() {
         </div>
       )}
 
-      <StudentFormModal open={modal} onClose={() => setModal(false)} courses={courses} departments={departments} onSave={(s) => { crud.students.create(s); setModal(false) }} />
+      <StudentFormModal
+        open={modal}
+        onClose={() => setModal(false)}
+        courses={courses}
+        departments={departments}
+        onSave={async (s) => {
+          await crud.students.create(s)
+          setModal(false)
+        }}
+      />
     </div>
   )
 }

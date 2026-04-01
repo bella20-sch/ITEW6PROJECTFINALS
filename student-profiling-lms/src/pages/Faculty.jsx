@@ -28,14 +28,14 @@ export default function Faculty() {
     })
     setModal({ open: true, mode: 'edit', item: f })
   }
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     const payload = { ...form, departmentID: Number(form.departmentID) }
-    if (modal.mode === 'add') crud.faculty.create(payload)
-    else crud.faculty.update(modal.item.facultyID, payload)
+    if (modal.mode === 'add') await crud.faculty.create(payload)
+    else await crud.faculty.update(modal.item.facultyID, payload)
     setModal({ open: false })
   }
-  const handleDelete = (id) => { if (confirm('Delete this faculty?')) crud.faculty.delete(id) }
+  const handleDelete = async (id) => { if (confirm('Delete this faculty?')) await crud.faculty.delete(id) }
 
   const faculty = crud.faculty.getAll()
   const statuses = Array.from(new Set(faculty.map(f => f.employmentStatus).filter(Boolean))).sort((a, b) => a.localeCompare(b))
