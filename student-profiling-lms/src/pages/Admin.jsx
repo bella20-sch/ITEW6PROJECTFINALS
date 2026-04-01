@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { apiFetch } from '../lib/api'
 import { useData } from '../context/DataContext'
@@ -10,7 +10,9 @@ const defaultStudent = {
   email: '',
   password: '',
   departmentID: '',
+  adviserFacultyID: '',
   courseID: '',
+  section: '',
 }
 
 const defaultFaculty = {
@@ -20,6 +22,8 @@ const defaultFaculty = {
   email: '',
   password: '',
   departmentID: '',
+  courseID: '',
+  section: '',
 }
 
 export default function Admin() {
@@ -31,23 +35,56 @@ export default function Admin() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
-  const [assignForm, setAssignForm] = useState({ facultyID: '', courseID: '', section: '' })
-  const [assignBusy, setAssignBusy] = useState(false)
+
+  useEffect(() => {
+    if (!departments.length || !courses.length) return
+    if (mode === 'student' && !faculty.length) return
+
+    setForm((prev) => {
+      // Don't clobber user typing; only fill blanks.
+      if (mode === 'faculty') {
+        return {
+          ...prev,
+          type: 'faculty',
+          departmentID: prev.departmentID || departments[0]?.departmentID || '',
+          courseID: prev.courseID || courses[0]?.courseID || '',
+        }
+      }
+      return {
+        ...prev,
+        type: 'student',
+        departmentID: prev.departmentID || departments[0]?.departmentID || '',
+        courseID: prev.courseID || courses[0]?.courseID || '',
+        adviserFacultyID: prev.adviserFacultyID || faculty[0]?.facultyID || '',
+      }
+    })
+  }, [departments, courses, faculty, mode])
 
   const canSubmit = useMemo(() => {
     if (!form.firstName.trim() || !form.lastName.trim() || !form.email.trim() || !form.password) return false
     if (String(form.password).length < 6) return false
-    if (mode === 'student') return !!form.departmentID && !!form.courseID
-    return !!form.departmentID
+    if (mode === 'faculty') return !!form.departmentID && !!form.courseID && !!form.section
+    return !!form.departmentID && !!form.courseID && !!form.section && !!form.adviserFacultyID
   }, [form, mode])
 
   const resetForm = (nextMode) => {
     setMode(nextMode)
     setError('')
     if (nextMode === 'faculty') {
-      setForm({ ...defaultFaculty, departmentID: departments[0]?.departmentID || '' })
+      setForm({
+        ...defaultFaculty,
+        departmentID: departments[0]?.departmentID || '',
+        courseID: courses[0]?.courseID || '',
+        section: '',
+      })
     } else {
-      setForm({ ...defaultStudent, departmentID: departments[0]?.departmentID || '', courseID: courses[0]?.courseID || '' })
+      setForm({
+        ...defaultStudent,
+        departmentID: departments[0]?.departmentID || '',
+        courseID: courses[0]?.courseID || '',
+        adviserFacultyID: faculty[0]?.facultyID || '',
+        section: '',
+      })
     }
   }
 
@@ -66,10 +103,12 @@ export default function Admin() {
         departmentID: Number(form.departmentID),
       }
 
-      if (mode === 'student') payload.courseID = Number(form.courseID)
+      payload.courseID = Number(form.courseID)
+      payload.section = form.section.trim()
+      if (mode === 'student') payload.adviserFacultyID = Number(form.adviserFacultyID)
 
       const endpoint = mode === 'student' ? '/api/admin/students' : '/api/admin/faculty'
-      await apiFetch(endpoint, { token, method: 'POST', body: payload })
+      const created = await apiFetch(endpoint, { token, method: 'POST', body: payload })
       setSuccess(`${mode === 'student' ? 'Student' : 'Faculty'} account created.`)
       resetForm(mode)
     } catch (err) {
@@ -122,11 +161,19 @@ export default function Admin() {
             {departments.map(d => <option key={d.departmentID} value={d.departmentID}>{d.departmentName}</option>)}
           </select>
 
+          <label>Course</label>
+          <select value={form.courseID} onChange={(e) => setForm({ ...form, courseID: e.target.value })} required>
+            {courses.map(c => <option key={c.courseID} value={c.courseID}>{c.courseCode} - {c.courseName}</option>)}
+          </select>
+
+          <label>Section</label>
+          <input value={form.section} onChange={(e) => setForm({ ...form, section: e.target.value })} placeholder="e.g. STEM-A" required />
+
           {mode === 'student' && (
             <>
-              <label>Course</label>
-              <select value={form.courseID} onChange={(e) => setForm({ ...form, courseID: e.target.value })} required>
-                {courses.map(c => <option key={c.courseID} value={c.courseID}>{c.courseCode} - {c.courseName}</option>)}
+              <label>Faculty / Professor</label>
+              <select value={form.adviserFacultyID} onChange={(e) => setForm({ ...form, adviserFacultyID: e.target.value })} required>
+                {faculty.map(f => <option key={f.facultyID} value={f.facultyID}>{f.firstName} {f.lastName}</option>)}
               </select>
             </>
           )}
@@ -135,54 +182,6 @@ export default function Admin() {
             <button type="button" className="btn btn-outline" onClick={() => resetForm(mode)} disabled={busy}>Reset</button>
             <button type="submit" className="btn btn-primary" disabled={!canSubmit || busy}>
               {busy ? 'Creating…' : 'Create Account'}
-            </button>
-          </div>
-        </form>
-      </div>
-
-      <div className="card" style={{ maxWidth: 820, marginTop: 16 }}>
-        <h3 style={{ marginBottom: 12 }}>Assign Faculty to Course/Section</h3>
-        <form
-          className="form"
-          onSubmit={async (e) => {
-            e.preventDefault()
-            setAssignBusy(true)
-            setError('')
-            setSuccess('')
-            try {
-              await apiFetch('/api/admin/faculty-assignments', {
-                token,
-                method: 'POST',
-                body: {
-                  facultyID: Number(assignForm.facultyID),
-                  courseID: Number(assignForm.courseID),
-                  section: assignForm.section || null,
-                },
-              })
-              setSuccess('Faculty assignment saved.')
-              setAssignForm({ facultyID: '', courseID: '', section: '' })
-            } catch (err) {
-              setError(err?.message || 'Failed to assign faculty.')
-            } finally {
-              setAssignBusy(false)
-            }
-          }}
-        >
-          <label>Faculty</label>
-          <select value={assignForm.facultyID} onChange={(e) => setAssignForm({ ...assignForm, facultyID: e.target.value })} required>
-            <option value="">Select faculty</option>
-            {faculty.map(f => <option key={f.facultyID} value={f.facultyID}>{f.firstName} {f.lastName}</option>)}
-          </select>
-          <label>Course</label>
-          <select value={assignForm.courseID} onChange={(e) => setAssignForm({ ...assignForm, courseID: e.target.value })} required>
-            <option value="">Select course</option>
-            {courses.map(c => <option key={c.courseID} value={c.courseID}>{c.courseCode}</option>)}
-          </select>
-          <label>Section (optional)</label>
-          <input value={assignForm.section} onChange={(e) => setAssignForm({ ...assignForm, section: e.target.value })} placeholder="e.g. STEM-A" />
-          <div className="form-actions">
-            <button type="submit" className="btn btn-primary" disabled={assignBusy || !assignForm.facultyID || !assignForm.courseID}>
-              {assignBusy ? 'Assigning…' : 'Save Assignment'}
             </button>
           </div>
         </form>

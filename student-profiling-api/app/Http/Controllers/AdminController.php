@@ -34,6 +34,8 @@ class AdminController extends Controller
             'lastName' => ['required', 'string'],
             'courseID' => ['required', 'integer'],
             'departmentID' => ['required', 'integer'],
+            'section' => ['nullable', 'string'],
+            'adviserFacultyID' => ['nullable', 'integer'],
         ]);
 
         $nextId = (int) (Student::max('studentID') ?? 0) + 1;
@@ -45,6 +47,8 @@ class AdminController extends Controller
             'lastName' => $data['lastName'],
             'courseID' => (int) $data['courseID'],
             'departmentID' => (int) $data['departmentID'],
+            'section' => $data['section'] ?? null,
+            'adviserFacultyID' => isset($data['adviserFacultyID']) ? (int) $data['adviserFacultyID'] : null,
             'enrollmentStatus' => 'Enrolled',
             'studentType' => 'Regular',
             'yearLevel' => 1,
@@ -63,6 +67,8 @@ class AdminController extends Controller
             'firstName' => ['required', 'string'],
             'lastName' => ['required', 'string'],
             'departmentID' => ['required', 'integer'],
+            'courseID' => ['required', 'integer'],
+            'section' => ['nullable', 'string'],
         ]);
 
         $nextId = (int) (Faculty::max('facultyID') ?? 0) + 1;
@@ -76,6 +82,16 @@ class AdminController extends Controller
             'employmentStatus' => 'Full-time',
             'position' => 'Instructor',
         ]);
+
+        // Assign teaching load immediately (course + section)
+        FacultyCourseAssignment::updateOrCreate(
+            [
+                'facultyID' => $faculty->facultyID,
+                'courseID' => (int) $data['courseID'],
+                'section' => $data['section'] ?? null,
+            ],
+            []
+        );
 
         return response()->json($faculty, 201);
     }

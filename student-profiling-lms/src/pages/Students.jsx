@@ -14,6 +14,7 @@ export default function Students() {
   const [courseFilter, setCourseFilter] = useState('')
   const [sectionFilter, setSectionFilter] = useState('')
   const [modal, setModal] = useState(false)
+  const [notice, setNotice] = useState('')
 
   const sections = Array.from(new Set(students.map(s => s.section).filter(Boolean))).sort((a, b) => a.localeCompare(b))
 
@@ -67,6 +68,12 @@ export default function Students() {
         </div>
       </div>
 
+      {notice && (
+        <div className="auth-alert" style={{ marginBottom: 12, borderColor: 'rgba(34,197,94,.35)', background: 'rgba(34,197,94,.10)' }}>
+          {notice}
+        </div>
+      )}
+
       <div className="student-list">
         {filtered.map((student) => {
           const course = courses.find(c => c.courseID === student.courseID)
@@ -102,6 +109,7 @@ export default function Students() {
         departments={departments}
         onSave={async (s) => {
           await crud.students.create(s)
+          setNotice('Student created successfully.')
           setModal(false)
         }}
       />}

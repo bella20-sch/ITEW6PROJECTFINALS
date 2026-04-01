@@ -117,7 +117,8 @@ class StudentController extends Controller
             'birthPlace' => ['nullable', 'string'],
             'nationality' => ['nullable', 'string'],
             'civilStatus' => ['nullable', 'string'],
-            'contactNumber' => ['nullable', 'string'],
+            // frontend may send number; store as string
+            'contactNumber' => ['nullable'],
             'email' => ['required', 'email', 'unique:students,email'],
             'address' => ['nullable', 'string'],
             'yearLevel' => ['nullable', 'integer'],
@@ -128,6 +129,9 @@ class StudentController extends Controller
             'courseID' => ['required', 'integer'],
             'departmentID' => ['required', 'integer'],
         ]);
+        if (array_key_exists('contactNumber', $data) && $data['contactNumber'] !== null) {
+            $data['contactNumber'] = (string) $data['contactNumber'];
+        }
 
         $nextId = (int) (Student::max('studentID') ?? 0) + 1;
         $data['studentID'] = $nextId;
@@ -157,7 +161,8 @@ class StudentController extends Controller
             'birthPlace' => ['sometimes', 'nullable', 'string'],
             'nationality' => ['sometimes', 'nullable', 'string'],
             'civilStatus' => ['sometimes', 'nullable', 'string'],
-            'contactNumber' => ['sometimes', 'nullable', 'string'],
+            // frontend may send number; store as string
+            'contactNumber' => ['sometimes', 'nullable'],
             'email' => ['sometimes', 'email', "unique:students,email,{$student->studentID},studentID"],
             'address' => ['sometimes', 'nullable', 'string'],
             'yearLevel' => ['sometimes', 'nullable', 'integer'],
@@ -168,6 +173,9 @@ class StudentController extends Controller
             'courseID' => ['sometimes', 'integer'],
             'departmentID' => ['sometimes', 'integer'],
         ]);
+        if (array_key_exists('contactNumber', $data) && $data['contactNumber'] !== null) {
+            $data['contactNumber'] = (string) $data['contactNumber'];
+        }
 
         $student->fill($data);
         $student->save();

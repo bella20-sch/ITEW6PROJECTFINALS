@@ -36,6 +36,7 @@ class Student extends Authenticatable
         'dateEnrolled',
         'courseID',
         'departmentID',
+        'adviserFacultyID',
         'password',
     ];
 
