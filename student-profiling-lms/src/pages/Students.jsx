@@ -2,11 +2,14 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Search, ChevronRight, Plus } from 'lucide-react'
 import { useData } from '../context/DataContext'
+import { useAuth } from '../context/AuthContext'
 import StudentFormModal from '../components/StudentFormModal'
 import FilterDropdown from '../components/FilterDropdown'
 
 export default function Students() {
   const { students, courses, departments, crud } = useData()
+  const { currentUser } = useAuth()
+  const isAdmin = currentUser?.role === 'Admin'
   const [search, setSearch] = useState('')
   const [courseFilter, setCourseFilter] = useState('')
   const [sectionFilter, setSectionFilter] = useState('')
@@ -58,9 +61,9 @@ export default function Students() {
               ...courses.map(c => ({ value: String(c.courseID), label: c.courseCode })),
             ]}
           />
-          <button className="btn btn-primary" onClick={() => setModal(true)}>
+          {isAdmin && <button className="btn btn-primary" onClick={() => setModal(true)}>
             <Plus size={18} /> Add Student
-          </button>
+          </button>}
         </div>
       </div>
 
@@ -92,7 +95,7 @@ export default function Students() {
         </div>
       )}
 
-      <StudentFormModal
+      {isAdmin && <StudentFormModal
         open={modal}
         onClose={() => setModal(false)}
         courses={courses}
@@ -101,7 +104,7 @@ export default function Students() {
           await crud.students.create(s)
           setModal(false)
         }}
-      />
+      />}
     </div>
   )
 }

@@ -5,6 +5,7 @@ import {
   Sparkles, ArrowLeft, GraduationCap, Pencil, Trash2, Plus,
 } from 'lucide-react'
 import { useData } from '../context/DataContext'
+import { useAuth } from '../context/AuthContext'
 import StudentFormModal from '../components/StudentFormModal'
 import Modal from '../components/Modal'
 
@@ -20,6 +21,8 @@ function ProfileSection({ icon: Icon, title, children, action }) {
 export default function StudentProfile() {
   const { id } = useParams()
   const { crud, courses, departments } = useData()
+  const { currentUser } = useAuth()
+  const isAdmin = currentUser?.role === 'Admin'
   const [student, setStudent] = useState(() => crud.students.getOne(id))
   const [loading, setLoading] = useState(!student)
   const [loadError, setLoadError] = useState('')
@@ -83,8 +86,8 @@ export default function StudentProfile() {
       <div className="profile-toolbar">
         <Link to="/students" className="back-link"><ArrowLeft size={18} /> Back to Students</Link>
         <div>
-          <button className="btn btn-outline" onClick={() => setEditModal(true)}><Pencil size={16} /> Edit</button>
-          <button className="btn btn-danger" onClick={handleDelete}><Trash2 size={16} /> Delete</button>
+          {isAdmin && <button className="btn btn-outline" onClick={() => setEditModal(true)}><Pencil size={16} /> Edit</button>}
+          {isAdmin && <button className="btn btn-danger" onClick={handleDelete}><Trash2 size={16} /> Delete</button>}
         </div>
       </div>
 
@@ -198,7 +201,7 @@ export default function StudentProfile() {
         </ProfileSection>
       </div>
 
-      <StudentFormModal
+      {isAdmin && <StudentFormModal
         open={editModal}
         onClose={() => setEditModal(false)}
         student={student}
@@ -209,7 +212,7 @@ export default function StudentProfile() {
           setStudent(updated)
           setEditModal(false)
         }}
-      />
+      />}
     </div>
   )
 }

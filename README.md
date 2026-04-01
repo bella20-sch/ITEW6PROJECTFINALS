@@ -6,6 +6,34 @@ A comprehensive student profiling and learning management system (LMS) built wit
 
 ---
 
+## Quick Start (After Clone)
+
+Run these from the **project root** (`ITEW6PROJECTFINALS`):
+
+```bat
+setup.bat
+start-dev.bat
+```
+
+What these do:
+- `setup.bat`
+  - installs frontend dependencies in `student-profiling-lms`
+  - installs backend dependencies in `student-profiling-api`
+  - runs backend migration + seed
+- `start-dev.bat`
+  - opens one terminal for Laravel API
+  - opens one terminal for React Vite app
+
+URLs:
+- Frontend: `http://localhost:5173`
+- Backend health check: `http://127.0.0.1:8000/api/health`
+
+Default MIS/Admin login:
+- Email: `mis.admin@school.edu`
+- Password: `admin123`
+
+---
+
 ## Table of Contents
 
 1. [Project Structure](#project-structure)
@@ -334,9 +362,44 @@ Layout
 ## Getting Started
 
 ```bash
+# Terminal A (backend)
+cd student-profiling-api
+composer install
+php artisan migrate
+php artisan db:seed
+serve.bat
+
+# Terminal B (frontend)
 cd student-profiling-lms
 npm install
 npm run dev
 ```
 
-Open `http://localhost:5173` (or the port shown in the terminal).
+Open `http://localhost:5173`.
+
+---
+
+## Required Commands by Directory
+
+From root:
+
+```bat
+setup.bat
+start-dev.bat
+```
+
+From `student-profiling-api`:
+
+```bash
+composer install
+php artisan migrate
+php artisan db:seed
+serve.bat
+```
+
+From `student-profiling-lms`:
+
+```bash
+npm install
+npm run dev
+```

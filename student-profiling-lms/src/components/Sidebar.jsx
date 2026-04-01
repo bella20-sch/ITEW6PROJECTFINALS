@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, Users, Building2, BookOpen, UserCircle, FileBarChart, GraduationCap, X, Shield } from 'lucide-react'
+import { LayoutDashboard, Users, Building2, BookOpen, UserCircle, FileBarChart, GraduationCap, X, Shield, ClipboardList } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
 const navItems = [
@@ -13,9 +13,24 @@ const navItems = [
 
 export default function Sidebar({ open, onClose }) {
   const { currentUser } = useAuth()
-  const items = currentUser?.role === 'Admin'
-    ? [...navItems, { path: 'admin', icon: Shield, label: 'MIS/Admin' }]
-    : navItems
+  let items = navItems
+  if (currentUser?.role === 'Admin') {
+    items = [...navItems, { path: 'admin', icon: Shield, label: 'MIS/Admin' }]
+  } else if (currentUser?.role === 'Faculty') {
+    items = [
+      { path: '', icon: LayoutDashboard, label: 'Dashboard' },
+      { path: 'students', icon: Users, label: 'My Students' },
+      { path: 'courses', icon: BookOpen, label: 'My Courses' },
+      { path: 'faculty', icon: UserCircle, label: 'My Profile' },
+      { path: 'workspace', icon: ClipboardList, label: 'Teaching Workspace' },
+    ]
+  } else if (currentUser?.role === 'Student') {
+    items = [
+      { path: '', icon: LayoutDashboard, label: 'Dashboard' },
+      { path: 'students', icon: Users, label: 'My Profile' },
+      { path: 'workspace', icon: ClipboardList, label: 'My Activities' },
+    ]
+  }
 
   return (
     <>

@@ -5,17 +5,31 @@ namespace App\Http\Controllers;
 use App\Models\Course;
 use App\Models\Department;
 use App\Models\Faculty;
+use App\Models\Admin;
+use App\Models\FacultyCourseAssignment;
 use Illuminate\Http\Request;
 
 class MetaController extends Controller
 {
+    private function adminOnly(Request $request)
+    {
+        if (!($request->user() instanceof Admin)) {
+            abort(403, 'Admin access required.');
+        }
+    }
+
     public function departments()
     {
+        $u = request()->user();
+        if ($u instanceof Faculty) {
+            return Department::where('departmentID', $u->departmentID)->get();
+        }
         return Department::orderBy('departmentName')->get();
     }
 
     public function createDepartment(Request $request)
     {
+        $this->adminOnly($request);
         $data = $request->validate([
             'departmentName' => ['required', 'string'],
             'officeLocation' => ['nullable', 'string'],
@@ -30,6 +44,7 @@ class MetaController extends Controller
 
     public function updateDepartment(Request $request, $id)
     {
+        $this->adminOnly($request);
         $d = Department::where('departmentID', (int) $id)->first();
         if (!$d) return response()->json(['error' => 'Department not found'], 404);
 
@@ -45,6 +60,7 @@ class MetaController extends Controller
 
     public function deleteDepartment($id)
     {
+        $this->adminOnly(request());
         $d = Department::where('departmentID', (int) $id)->first();
         if (!$d) return response()->json(['error' => 'Department not found'], 404);
         $d->delete();
@@ -53,11 +69,17 @@ class MetaController extends Controller
 
     public function courses()
     {
+        $u = request()->user();
+        if ($u instanceof Faculty) {
+            $courseIds = FacultyCourseAssignment::where('facultyID', $u->facultyID)->pluck('courseID')->unique()->values();
+            return Course::whereIn('courseID', $courseIds)->orderBy('courseCode')->get();
+        }
         return Course::orderBy('courseCode')->get();
     }
 
     public function createCourse(Request $request)
     {
+        $this->adminOnly($request);
         $data = $request->validate([
             'courseCode' => ['required', 'string'],
             'courseName' => ['required', 'string'],
@@ -72,6 +94,7 @@ class MetaController extends Controller
 
     public function updateCourse(Request $request, $id)
     {
+        $this->adminOnly($request);
         $c = Course::where('courseID', (int) $id)->first();
         if (!$c) return response()->json(['error' => 'Course not found'], 404);
         $data = $request->validate([
@@ -87,6 +110,7 @@ class MetaController extends Controller
 
     public function deleteCourse($id)
     {
+        $this->adminOnly(request());
         $c = Course::where('courseID', (int) $id)->first();
         if (!$c) return response()->json(['error' => 'Course not found'], 404);
         $c->delete();
@@ -95,11 +119,16 @@ class MetaController extends Controller
 
     public function faculty()
     {
+        $u = request()->user();
+        if ($u instanceof Faculty) {
+            return Faculty::where('facultyID', $u->facultyID)->get();
+        }
         return Faculty::orderBy('lastName')->get();
     }
 
     public function createFaculty(Request $request)
     {
+        $this->adminOnly($request);
         $data = $request->validate([
             'departmentID' => ['required', 'integer'],
             'firstName' => ['required', 'string'],
@@ -119,6 +148,7 @@ class MetaController extends Controller
 
     public function updateFaculty(Request $request, $id)
     {
+        $this->adminOnly($request);
         $f = Faculty::where('facultyID', (int) $id)->first();
         if (!$f) return response()->json(['error' => 'Faculty not found'], 404);
         $data = $request->validate([
@@ -139,6 +169,7 @@ class MetaController extends Controller
 
     public function deleteFaculty($id)
     {
+        $this->adminOnly(request());
         $f = Faculty::where('facultyID', (int) $id)->first();
         if (!$f) return response()->json(['error' => 'Faculty not found'], 404);
         $f->delete();

@@ -1,14 +1,19 @@
 import { useState } from 'react'
 import { useData } from '../context/DataContext'
+import { useAuth } from '../context/AuthContext'
 import { BookOpen, Plus, Pencil, Trash2 } from 'lucide-react'
 import Modal from '../components/Modal'
 import FilterDropdown from '../components/FilterDropdown'
 
 export default function Courses() {
   const { departments, crud } = useData()
+  const { currentUser } = useAuth()
+  const isAdmin = currentUser?.role === 'Admin'
   const [modal, setModal] = useState({ open: false, mode: 'add', item: null })
   const [form, setForm] = useState({ courseCode: '', courseName: '', totalUnits: '', departmentID: '' })
   const [departmentFilter, setDepartmentFilter] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [deletingId, setDeletingId] = useState(null)
 
   const openAdd = () => {
     setForm({ courseCode: '', courseName: '', totalUnits: '', departmentID: departments[0]?.departmentID || '' })
@@ -20,12 +25,25 @@ export default function Courses() {
   }
   const handleSubmit = async (e) => {
     e.preventDefault()
+    setBusy(true)
     const payload = { ...form, totalUnits: Number(form.totalUnits), departmentID: Number(form.departmentID) }
-    if (modal.mode === 'add') await crud.courses.create(payload)
-    else await crud.courses.update(modal.item.courseID, payload)
-    setModal({ open: false })
+    try {
+      if (modal.mode === 'add') await crud.courses.create(payload)
+      else await crud.courses.update(modal.item.courseID, payload)
+      setModal({ open: false })
+    } finally {
+      setBusy(false)
+    }
   }
-  const handleDelete = async (id) => { if (confirm('Delete this course?')) await crud.courses.delete(id) }
+  const handleDelete = async (id) => {
+    if (!confirm('Delete this course?')) return
+    setDeletingId(id)
+    try {
+      await crud.courses.delete(id)
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   const courses = crud.courses.getAll()
   const filtered = departmentFilter ? courses.filter(c => String(c.departmentID) === departmentFilter) : courses
@@ -45,9 +63,9 @@ export default function Courses() {
               ...departments.map(d => ({ value: String(d.departmentID), label: d.departmentName })),
             ]}
           />
-          <button className="btn btn-primary" onClick={openAdd}>
+          {isAdmin && <button className="btn btn-primary" onClick={openAdd}>
             <Plus size={18} /> Add Course
-          </button>
+          </button>}
         </div>
       </div>
 
@@ -71,14 +89,14 @@ export default function Courses() {
               </div>
               <div className="course-right">
                 <span className="course-code">{c.courseCode}</span>
-                <div className="course-actions">
+                {isAdmin && <div className="course-actions">
                   <button className="btn-icon" onClick={() => openEdit(c)} aria-label={`Edit ${c.courseCode}`}>
                     <Pencil size={16} />
                   </button>
-                  <button className="btn-icon btn-danger" onClick={() => handleDelete(c.courseID)} aria-label={`Delete ${c.courseCode}`}>
+                  <button className="btn-icon btn-danger" onClick={() => handleDelete(c.courseID)} aria-label={`Delete ${c.courseCode}`} disabled={deletingId === c.courseID}>
                     <Trash2 size={16} />
                   </button>
-                </div>
+                </div>}
               </div>
             </div>
           )
@@ -91,7 +109,7 @@ export default function Courses() {
         </div>
       )}
 
-      <Modal title={modal.mode === 'add' ? 'Add Course' : 'Edit Course'} open={modal.open} onClose={() => setModal({ open: false })}>
+      {isAdmin && <Modal title={modal.mode === 'add' ? 'Add Course' : 'Edit Course'} open={modal.open} onClose={() => setModal({ open: false })}>
         <form onSubmit={handleSubmit} className="form">
           <label>Course Code</label>
           <input value={form.courseCode} onChange={e => setForm({ ...form, courseCode: e.target.value })} required />
@@ -104,11 +122,11 @@ export default function Courses() {
             {departments.map(d => <option key={d.departmentID} value={d.departmentID}>{d.departmentName}</option>)}
           </select>
           <div className="form-actions">
-            <button type="button" className="btn btn-outline" onClick={() => setModal({ open: false })}>Cancel</button>
-            <button type="submit" className="btn btn-primary">Save</button>
+            <button type="button" className="btn btn-outline" onClick={() => setModal({ open: false })} disabled={busy}>Cancel</button>
+            <button type="submit" className="btn btn-primary" disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>
           </div>
         </form>
-      </Modal>
+      </Modal>}
     </div>
   )
 }

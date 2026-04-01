@@ -11,6 +11,7 @@ import Reports from './pages/Reports'
 import Login from './pages/Login'
 import Admin from './pages/Admin'
 import RequireAdmin from './components/RequireAdmin'
+import Workspace from './pages/Workspace'
 
 export default function App() {
   return (
@@ -31,6 +32,7 @@ export default function App() {
         <Route path="courses" element={<Courses />} />
         <Route path="faculty" element={<Faculty />} />
         <Route path="reports" element={<Reports />} />
+        <Route path="workspace" element={<Workspace />} />
         <Route
           path="admin"
           element={

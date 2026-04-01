@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Admin;
 use App\Models\Faculty;
+use App\Models\FacultyCourseAssignment;
 use App\Models\Student;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -77,5 +78,45 @@ class AdminController extends Controller
         ]);
 
         return response()->json($faculty, 201);
+    }
+
+    public function assignFacultyCourse(Request $request)
+    {
+        $this->requireAdmin($request);
+        $data = $request->validate([
+            'facultyID' => ['required', 'integer'],
+            'courseID' => ['required', 'integer'],
+            'section' => ['nullable', 'string'],
+        ]);
+
+        $assign = FacultyCourseAssignment::updateOrCreate(
+            [
+                'facultyID' => (int) $data['facultyID'],
+                'courseID' => (int) $data['courseID'],
+                'section' => $data['section'] ?? null,
+            ],
+            []
+        );
+
+        return response()->json($assign, 201);
+    }
+
+    public function assignStudent(Request $request, $studentId)
+    {
+        $this->requireAdmin($request);
+        $data = $request->validate([
+            'departmentID' => ['required', 'integer'],
+            'courseID' => ['required', 'integer'],
+            'section' => ['nullable', 'string'],
+        ]);
+        $student = Student::where('studentID', (int) $studentId)->first();
+        if (!$student) return response()->json(['error' => 'Student not found'], 404);
+
+        $student->departmentID = (int) $data['departmentID'];
+        $student->courseID = (int) $data['courseID'];
+        if (array_key_exists('section', $data)) $student->section = $data['section'];
+        $student->save();
+
+        return response()->json($student);
     }
 }

@@ -48,17 +48,6 @@ export function AuthProvider({ children }) {
   }, [token, ready])
 
   const value = useMemo(() => {
-    const signup = async ({ email, password }) => {
-      try {
-        const res = await apiFetch('/api/auth/signup', { method: 'POST', body: { email, password } })
-        setToken(res.token || '')
-        setCurrentUser(res.user || null)
-        return { ok: true }
-      } catch (e) {
-        return { ok: false, error: e?.message || 'Signup failed.' }
-      }
-    }
-
     const login = async ({ email, password }) => {
       try {
         const res = await apiFetch('/api/auth/login', { method: 'POST', body: { email, password } })
@@ -86,7 +75,6 @@ export function AuthProvider({ children }) {
       token,
       currentUser,
       isAuthenticated: !!currentUser,
-      signup,
       login,
       logout,
     }

@@ -1,13 +1,18 @@
 import { useState } from 'react'
 import { useData } from '../context/DataContext'
+import { useAuth } from '../context/AuthContext'
 import { Building2, Plus, Pencil, Trash2, Search } from 'lucide-react'
 import Modal from '../components/Modal'
 
 export default function Departments() {
   const { crud } = useData()
+  const { currentUser } = useAuth()
+  const isAdmin = currentUser?.role === 'Admin'
   const [modal, setModal] = useState({ open: false, mode: 'add', item: null })
   const [form, setForm] = useState({ departmentName: '', officeLocation: '', contactNumber: '' })
   const [search, setSearch] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [deletingId, setDeletingId] = useState(null)
 
   const openAdd = () => {
     setForm({ departmentName: '', officeLocation: '', contactNumber: '' })
@@ -19,11 +24,24 @@ export default function Departments() {
   }
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (modal.mode === 'add') await crud.departments.create(form)
-    else await crud.departments.update(modal.item.departmentID, form)
-    setModal({ open: false })
+    setBusy(true)
+    try {
+      if (modal.mode === 'add') await crud.departments.create(form)
+      else await crud.departments.update(modal.item.departmentID, form)
+      setModal({ open: false })
+    } finally {
+      setBusy(false)
+    }
   }
-  const handleDelete = async (id) => { if (confirm('Delete this department?')) await crud.departments.delete(id) }
+  const handleDelete = async (id) => {
+    if (!confirm('Delete this department?')) return
+    setDeletingId(id)
+    try {
+      await crud.departments.delete(id)
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   const deps = crud.departments.getAll()
   const query = search.trim().toLowerCase()
@@ -49,9 +67,9 @@ export default function Departments() {
               className="search-input"
             />
           </div>
-          <button className="btn btn-primary" onClick={openAdd}>
+          {isAdmin && <button className="btn btn-primary" onClick={openAdd}>
             <Plus size={18} /> Add Department
-          </button>
+          </button>}
         </div>
       </div>
 
@@ -76,14 +94,14 @@ export default function Departments() {
               </div>
             </div>
             <div className="dept-right">
-              <div className="dept-actions">
+              {isAdmin && <div className="dept-actions">
                 <button className="btn-icon" onClick={() => openEdit(d)} aria-label={`Edit ${d.departmentName}`}>
                   <Pencil size={16} />
                 </button>
-                <button className="btn-icon btn-danger" onClick={() => handleDelete(d.departmentID)} aria-label={`Delete ${d.departmentName}`}>
+                <button className="btn-icon btn-danger" onClick={() => handleDelete(d.departmentID)} aria-label={`Delete ${d.departmentName}`} disabled={deletingId === d.departmentID}>
                   <Trash2 size={16} />
                 </button>
-              </div>
+              </div>}
             </div>
           </div>
         ))}
@@ -95,7 +113,7 @@ export default function Departments() {
         </div>
       )}
 
-      <Modal title={modal.mode === 'add' ? 'Add Department' : 'Edit Department'} open={modal.open} onClose={() => setModal({ open: false })}>
+      {isAdmin && <Modal title={modal.mode === 'add' ? 'Add Department' : 'Edit Department'} open={modal.open} onClose={() => setModal({ open: false })}>
         <form onSubmit={handleSubmit} className="form">
           <label>Department Name</label>
           <input value={form.departmentName} onChange={e => setForm({ ...form, departmentName: e.target.value })} required />
@@ -104,11 +122,11 @@ export default function Departments() {
           <label>Contact Number</label>
           <input type="text" value={form.contactNumber} onChange={e => setForm({ ...form, contactNumber: e.target.value })} />
           <div className="form-actions">
-            <button type="button" className="btn btn-outline" onClick={() => setModal({ open: false })}>Cancel</button>
-            <button type="submit" className="btn btn-primary">Save</button>
+            <button type="button" className="btn btn-outline" onClick={() => setModal({ open: false })} disabled={busy}>Cancel</button>
+            <button type="submit" className="btn btn-primary" disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>
           </div>
         </form>
-      </Modal>
+      </Modal>}
     </div>
   )
 }

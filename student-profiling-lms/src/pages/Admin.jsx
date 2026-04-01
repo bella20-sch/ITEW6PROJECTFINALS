@@ -24,13 +24,15 @@ const defaultFaculty = {
 
 export default function Admin() {
   const { token } = useAuth()
-  const { departments, courses } = useData()
+  const { departments, courses, faculty } = useData()
 
   const [mode, setMode] = useState('student')
   const [form, setForm] = useState(defaultStudent)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [assignForm, setAssignForm] = useState({ facultyID: '', courseID: '', section: '' })
+  const [assignBusy, setAssignBusy] = useState(false)
 
   const canSubmit = useMemo(() => {
     if (!form.firstName.trim() || !form.lastName.trim() || !form.email.trim() || !form.password) return false
@@ -42,7 +44,6 @@ export default function Admin() {
   const resetForm = (nextMode) => {
     setMode(nextMode)
     setError('')
-    setSuccess('')
     if (nextMode === 'faculty') {
       setForm({ ...defaultFaculty, departmentID: departments[0]?.departmentID || '' })
     } else {
@@ -134,6 +135,54 @@ export default function Admin() {
             <button type="button" className="btn btn-outline" onClick={() => resetForm(mode)} disabled={busy}>Reset</button>
             <button type="submit" className="btn btn-primary" disabled={!canSubmit || busy}>
               {busy ? 'Creating…' : 'Create Account'}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div className="card" style={{ maxWidth: 820, marginTop: 16 }}>
+        <h3 style={{ marginBottom: 12 }}>Assign Faculty to Course/Section</h3>
+        <form
+          className="form"
+          onSubmit={async (e) => {
+            e.preventDefault()
+            setAssignBusy(true)
+            setError('')
+            setSuccess('')
+            try {
+              await apiFetch('/api/admin/faculty-assignments', {
+                token,
+                method: 'POST',
+                body: {
+                  facultyID: Number(assignForm.facultyID),
+                  courseID: Number(assignForm.courseID),
+                  section: assignForm.section || null,
+                },
+              })
+              setSuccess('Faculty assignment saved.')
+              setAssignForm({ facultyID: '', courseID: '', section: '' })
+            } catch (err) {
+              setError(err?.message || 'Failed to assign faculty.')
+            } finally {
+              setAssignBusy(false)
+            }
+          }}
+        >
+          <label>Faculty</label>
+          <select value={assignForm.facultyID} onChange={(e) => setAssignForm({ ...assignForm, facultyID: e.target.value })} required>
+            <option value="">Select faculty</option>
+            {faculty.map(f => <option key={f.facultyID} value={f.facultyID}>{f.firstName} {f.lastName}</option>)}
+          </select>
+          <label>Course</label>
+          <select value={assignForm.courseID} onChange={(e) => setAssignForm({ ...assignForm, courseID: e.target.value })} required>
+            <option value="">Select course</option>
+            {courses.map(c => <option key={c.courseID} value={c.courseID}>{c.courseCode}</option>)}
+          </select>
+          <label>Section (optional)</label>
+          <input value={assignForm.section} onChange={(e) => setAssignForm({ ...assignForm, section: e.target.value })} placeholder="e.g. STEM-A" />
+          <div className="form-actions">
+            <button type="submit" className="btn btn-primary" disabled={assignBusy || !assignForm.facultyID || !assignForm.courseID}>
+              {assignBusy ? 'Assigning…' : 'Save Assignment'}
             </button>
           </div>
         </form>

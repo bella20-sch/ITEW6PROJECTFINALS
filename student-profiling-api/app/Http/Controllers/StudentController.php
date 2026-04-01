@@ -9,14 +9,38 @@ use App\Models\MedicalHistory;
 use App\Models\Skill;
 use App\Models\Student;
 use App\Models\Violation;
+use App\Models\Admin;
+use App\Models\Faculty;
+use App\Models\FacultyCourseAssignment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class StudentController extends Controller
 {
     public function index(Request $request)
     {
         $q = Student::query();
+        $u = $request->user();
+        $isAdmin = $u instanceof Admin;
+        $isFaculty = $u instanceof Faculty;
+        $isStudent = $u instanceof Student;
+
+        if ($isFaculty) {
+            $assignments = FacultyCourseAssignment::where('facultyID', $u->facultyID)->get();
+            $q->where(function ($qq) use ($assignments) {
+                foreach ($assignments as $a) {
+                    $qq->orWhere(function ($q2) use ($a) {
+                        $q2->where('courseID', $a->courseID);
+                        if ($a->section) $q2->where('section', $a->section);
+                    });
+                }
+            });
+        } elseif ($isStudent) {
+            $q->where('studentID', $u->studentID);
+        } elseif (!$isAdmin) {
+            throw ValidationException::withMessages(['auth' => ['Unauthorized role.']]);
+        }
 
         if ($request->filled('search')) {
             $search = strtolower(trim((string) $request->query('search')));
@@ -55,11 +79,24 @@ class StudentController extends Controller
         return $q->orderBy('lastName')->orderBy('firstName')->get();
     }
 
-    public function show($id)
+    public function show(Request $request, $id)
     {
         $student = Student::where('studentID', (int) $id)->first();
         if (!$student) {
             return response()->json(['error' => 'Student not found'], 404);
+        }
+
+        $u = $request->user();
+        if ($u instanceof Student && (int) $u->studentID !== (int) $student->studentID) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
+        if ($u instanceof Faculty) {
+            $ok = FacultyCourseAssignment::where('facultyID', $u->facultyID)
+                ->where('courseID', $student->courseID)
+                ->where(function ($q) use ($student) {
+                    $q->whereNull('section')->orWhere('section', $student->section);
+                })->exists();
+            if (!$ok) return response()->json(['error' => 'Forbidden'], 403);
         }
 
         return response()->json($this->profilePayload($student));
@@ -67,6 +104,9 @@ class StudentController extends Controller
 
     public function store(Request $request)
     {
+        if (!($request->user() instanceof Admin)) {
+            return response()->json(['error' => 'Only admin can create students.'], 403);
+        }
         $data = $request->validate([
             'firstName' => ['required', 'string'],
             'middleName' => ['nullable', 'string'],
@@ -103,6 +143,10 @@ class StudentController extends Controller
             return response()->json(['error' => 'Student not found'], 404);
         }
 
+        if (!($request->user() instanceof Admin)) {
+            return response()->json(['error' => 'Only admin can edit student profile.'], 403);
+        }
+
         $data = $request->validate([
             'firstName' => ['sometimes', 'string'],
             'middleName' => ['sometimes', 'nullable', 'string'],
@@ -133,6 +177,11 @@ class StudentController extends Controller
 
     public function destroy($id)
     {
+        // Keep delete admin-only
+        // request() helper is acceptable here because controller method is route-bound
+        if (!(request()->user() instanceof Admin)) {
+            return response()->json(['error' => 'Only admin can delete students.'], 403);
+        }
         $student = Student::where('studentID', (int) $id)->first();
         if (!$student) {
             return response()->json(['error' => 'Student not found'], 404);

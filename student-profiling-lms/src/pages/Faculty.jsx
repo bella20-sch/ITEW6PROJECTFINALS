@@ -1,14 +1,19 @@
 import { useState } from 'react'
 import { useData } from '../context/DataContext'
+import { useAuth } from '../context/AuthContext'
 import { UserCircle, Plus, Pencil, Trash2 } from 'lucide-react'
 import Modal from '../components/Modal'
 import FilterDropdown from '../components/FilterDropdown'
 
 export default function Faculty() {
   const { departments, crud } = useData()
+  const { currentUser } = useAuth()
+  const isAdmin = currentUser?.role === 'Admin'
   const [modal, setModal] = useState({ open: false, mode: 'add', item: null })
   const [departmentFilter, setDepartmentFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [deletingId, setDeletingId] = useState(null)
   const [form, setForm] = useState({
     firstName: '', lastName: '', departmentID: '', position: '', employmentStatus: 'Full-time',
     hireDate: '', email: '', contactNumber: '', officeLocation: '',
@@ -30,12 +35,25 @@ export default function Faculty() {
   }
   const handleSubmit = async (e) => {
     e.preventDefault()
+    setBusy(true)
     const payload = { ...form, departmentID: Number(form.departmentID) }
-    if (modal.mode === 'add') await crud.faculty.create(payload)
-    else await crud.faculty.update(modal.item.facultyID, payload)
-    setModal({ open: false })
+    try {
+      if (modal.mode === 'add') await crud.faculty.create(payload)
+      else await crud.faculty.update(modal.item.facultyID, payload)
+      setModal({ open: false })
+    } finally {
+      setBusy(false)
+    }
   }
-  const handleDelete = async (id) => { if (confirm('Delete this faculty?')) await crud.faculty.delete(id) }
+  const handleDelete = async (id) => {
+    if (!confirm('Delete this faculty?')) return
+    setDeletingId(id)
+    try {
+      await crud.faculty.delete(id)
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   const faculty = crud.faculty.getAll()
   const statuses = Array.from(new Set(faculty.map(f => f.employmentStatus).filter(Boolean))).sort((a, b) => a.localeCompare(b))
@@ -70,7 +88,7 @@ export default function Faculty() {
               ...statuses.map(s => ({ value: s, label: s })),
             ]}
           />
-          <button className="btn btn-primary" onClick={openAdd}><Plus size={18} /> Add Faculty</button>
+          {isAdmin && <button className="btn btn-primary" onClick={openAdd}><Plus size={18} /> Add Faculty</button>}
         </div>
       </div>
 
@@ -94,14 +112,14 @@ export default function Faculty() {
               </div>
               <div className="faculty-right">
                 <span className="faculty-status">{f.employmentStatus}</span>
-                <div className="faculty-actions">
+                {isAdmin && <div className="faculty-actions">
                   <button className="btn-icon" onClick={() => openEdit(f)} aria-label={`Edit ${f.firstName} ${f.lastName}`}>
                     <Pencil size={16} />
                   </button>
-                  <button className="btn-icon btn-danger" onClick={() => handleDelete(f.facultyID)} aria-label={`Delete ${f.firstName} ${f.lastName}`}>
+                  <button className="btn-icon btn-danger" onClick={() => handleDelete(f.facultyID)} aria-label={`Delete ${f.firstName} ${f.lastName}`} disabled={deletingId === f.facultyID}>
                     <Trash2 size={16} />
                   </button>
-                </div>
+                </div>}
               </div>
             </div>
           )
@@ -114,7 +132,7 @@ export default function Faculty() {
         </div>
       )}
 
-      <Modal title={modal.mode === 'add' ? 'Add Faculty' : 'Edit Faculty'} open={modal.open} onClose={() => setModal({ open: false })}>
+      {isAdmin && <Modal title={modal.mode === 'add' ? 'Add Faculty' : 'Edit Faculty'} open={modal.open} onClose={() => setModal({ open: false })}>
         <form onSubmit={handleSubmit} className="form">
           <div className="form-row">
             <div><label>First Name</label><input value={form.firstName} onChange={e => setForm({ ...form, firstName: e.target.value })} required /></div>
@@ -139,11 +157,11 @@ export default function Faculty() {
           <label>Office Location</label>
           <input value={form.officeLocation} onChange={e => setForm({ ...form, officeLocation: e.target.value })} />
           <div className="form-actions">
-            <button type="button" className="btn btn-outline" onClick={() => setModal({ open: false })}>Cancel</button>
-            <button type="submit" className="btn btn-primary">Save</button>
+            <button type="button" className="btn btn-outline" onClick={() => setModal({ open: false })} disabled={busy}>Cancel</button>
+            <button type="submit" className="btn btn-primary" disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>
           </div>
         </form>
-      </Modal>
+      </Modal>}
     </div>
   )
 }
