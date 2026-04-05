@@ -1,18 +1,21 @@
 import { useState } from 'react'
 import { useData } from '../context/DataContext'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
 import { Building2, Plus, Pencil, Trash2, Search } from 'lucide-react'
 import Modal from '../components/Modal'
+import ConfirmModal from '../components/ConfirmModal'
 
 export default function Departments() {
   const { crud } = useData()
   const { currentUser } = useAuth()
+  const { showToast } = useToast()
   const isAdmin = currentUser?.role === 'Admin'
   const [modal, setModal] = useState({ open: false, mode: 'add', item: null })
   const [form, setForm] = useState({ departmentName: '', officeLocation: '', contactNumber: '' })
   const [search, setSearch] = useState('')
   const [busy, setBusy] = useState(false)
-  const [deletingId, setDeletingId] = useState(null)
+  const [confirm, setConfirm] = useState({ open: false, type: null, item: null })
 
   const openAdd = () => {
     setForm({ departmentName: '', officeLocation: '', contactNumber: '' })
@@ -22,34 +25,54 @@ export default function Departments() {
     setForm({ departmentName: d.departmentName, officeLocation: d.officeLocation, contactNumber: d.contactNumber || '' })
     setModal({ open: true, mode: 'edit', item: d })
   }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (modal.mode === 'edit') {
+      setModal(m => ({ ...m, open: false }))
+      setConfirm({ open: true, type: 'edit', item: modal.item })
+      return
+    }
     setBusy(true)
     try {
-      if (modal.mode === 'add') await crud.departments.create(form)
-      else await crud.departments.update(modal.item.departmentID, form)
+      await crud.departments.create(form)
       setModal({ open: false })
+    } catch (err) {
+      showToast(err?.message || 'Failed to save.', 'error')
     } finally {
       setBusy(false)
     }
   }
-  const handleDelete = async (id) => {
-    if (!confirm('Delete this department?')) return
-    setDeletingId(id)
+
+  const handleConfirmEdit = async () => {
+    setConfirm({ open: false })
+    setBusy(true)
+    try {
+      await crud.departments.update(confirm.item.departmentID, form)
+      setModal({ open: false })
+    } catch (err) {
+      showToast(err?.message || 'Failed to update.', 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const handleDelete = (d) => setConfirm({ open: true, type: 'delete', item: d })
+
+  const handleConfirmDelete = async () => {
+    const id = confirm.item.departmentID
+    setConfirm({ open: false })
     try {
       await crud.departments.delete(id)
-    } finally {
-      setDeletingId(null)
+    } catch (err) {
+      showToast(err?.message || 'Failed to delete.', 'error')
     }
   }
 
   const deps = crud.departments.getAll()
   const query = search.trim().toLowerCase()
   const filtered = query
-    ? deps.filter(d => {
-        const hay = `${d.departmentName} ${d.officeLocation} ${d.contactNumber || ''}`.toLowerCase()
-        return hay.includes(query)
-      })
+    ? deps.filter(d => `${d.departmentName} ${d.officeLocation} ${d.contactNumber || ''}`.toLowerCase().includes(query))
     : deps
 
   return (
@@ -59,74 +82,67 @@ export default function Departments() {
         <div className="page-header-actions">
           <div className="search-box">
             <Search size={18} />
-            <input
-              type="search"
-              placeholder="Search departments..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="search-input"
-            />
+            <input type="search" placeholder="Search departments..." value={search}
+              onChange={e => setSearch(e.target.value)} className="search-input" />
           </div>
-          {isAdmin && <button className="btn btn-primary" onClick={openAdd}>
-            <Plus size={18} /> Add Department
-          </button>}
+          {isAdmin && <button className="btn btn-primary" onClick={openAdd}><Plus size={18} /> Add Department</button>}
         </div>
       </div>
 
       <div className="dept-list">
         {filtered.map(d => (
           <div key={d.departmentID} className="dept-row">
-            <div className="dept-icon" aria-hidden="true">
-              <Building2 size={20} />
-            </div>
+            <div className="dept-icon"><Building2 size={20} /></div>
             <div className="dept-info">
-              <div className="dept-topline">
-                <h3 className="dept-name">{d.departmentName}</h3>
-              </div>
+              <div className="dept-topline"><h3 className="dept-name">{d.departmentName}</h3></div>
               <div className="dept-meta">
                 <span>{d.officeLocation}</span>
-                {d.contactNumber ? (
-                  <>
-                    <span className="dept-dot" aria-hidden="true">•</span>
-                    <span className="muted">{d.contactNumber}</span>
-                  </>
-                ) : null}
+                {d.contactNumber && <><span className="dept-dot">•</span><span className="muted">{d.contactNumber}</span></>}
               </div>
             </div>
             <div className="dept-right">
               {isAdmin && <div className="dept-actions">
-                <button className="btn-icon" onClick={() => openEdit(d)} aria-label={`Edit ${d.departmentName}`}>
-                  <Pencil size={16} />
-                </button>
-                <button className="btn-icon btn-danger" onClick={() => handleDelete(d.departmentID)} aria-label={`Delete ${d.departmentName}`} disabled={deletingId === d.departmentID}>
-                  <Trash2 size={16} />
-                </button>
+                <button className="btn-icon" onClick={() => openEdit(d)}><Pencil size={16} /></button>
+                <button className="btn-icon btn-danger" onClick={() => handleDelete(d)}><Trash2 size={16} /></button>
               </div>}
             </div>
           </div>
         ))}
       </div>
+      {filtered.length === 0 && <div className="empty-state"><p>No departments match your search.</p></div>}
 
-      {filtered.length === 0 && (
-        <div className="empty-state">
-          <p>No departments match your search.</p>
-        </div>
+      {isAdmin && (
+        <Modal title={modal.mode === 'add' ? 'Add Department' : 'Edit Department'} open={modal.open} onClose={() => setModal({ open: false })}>
+          <form onSubmit={handleSubmit} className="form">
+            <label>Department Name</label>
+            <input value={form.departmentName} onChange={e => setForm({ ...form, departmentName: e.target.value })} required />
+            <label>Office Location</label>
+            <input value={form.officeLocation} onChange={e => setForm({ ...form, officeLocation: e.target.value })} required />
+            <label>Contact Number</label>
+            <input value={form.contactNumber} onChange={e => setForm({ ...form, contactNumber: e.target.value })} />
+            <div className="form-actions">
+              <button type="button" className="btn btn-outline" onClick={() => setModal({ open: false })} disabled={busy}>Cancel</button>
+              <button type="submit" className="btn btn-primary" disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>
+            </div>
+          </form>
+        </Modal>
       )}
 
-      {isAdmin && <Modal title={modal.mode === 'add' ? 'Add Department' : 'Edit Department'} open={modal.open} onClose={() => setModal({ open: false })}>
-        <form onSubmit={handleSubmit} className="form">
-          <label>Department Name</label>
-          <input value={form.departmentName} onChange={e => setForm({ ...form, departmentName: e.target.value })} required />
-          <label>Office Location</label>
-          <input value={form.officeLocation} onChange={e => setForm({ ...form, officeLocation: e.target.value })} required />
-          <label>Contact Number</label>
-          <input type="text" value={form.contactNumber} onChange={e => setForm({ ...form, contactNumber: e.target.value })} />
-          <div className="form-actions">
-            <button type="button" className="btn btn-outline" onClick={() => setModal({ open: false })} disabled={busy}>Cancel</button>
-            <button type="submit" className="btn btn-primary" disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>
-          </div>
-        </form>
-      </Modal>}
+      <ConfirmModal
+        open={confirm.open && confirm.type === 'edit'}
+        title="Confirm Edit"
+        message={`Save changes to "${confirm.item?.departmentName}"?`}
+        onConfirm={handleConfirmEdit}
+        onCancel={() => { setConfirm({ open: false }); setModal(m => ({ ...m, open: true })) }}
+      />
+      <ConfirmModal
+        open={confirm.open && confirm.type === 'delete'}
+        title="Delete Department"
+        message={`Are you sure you want to delete "${confirm.item?.departmentName}"? This cannot be undone.`}
+        danger
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setConfirm({ open: false })}
+      />
     </div>
   )
 }

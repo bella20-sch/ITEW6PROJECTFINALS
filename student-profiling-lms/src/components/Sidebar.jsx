@@ -1,11 +1,10 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, Users, Building2, BookOpen, UserCircle, FileBarChart, GraduationCap, X, Shield, ClipboardList } from 'lucide-react'
+import { LayoutDashboard, Users, BookOpen, UserCircle, FileBarChart, X, Shield, ClipboardList } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
 const navItems = [
   { path: '', icon: LayoutDashboard, label: 'Dashboard' },
   { path: 'students', icon: Users, label: 'Students' },
-  { path: 'departments', icon: Building2, label: 'Departments' },
   { path: 'courses', icon: BookOpen, label: 'Courses' },
   { path: 'faculty', icon: UserCircle, label: 'Faculty' },
   { path: 'reports', icon: FileBarChart, label: 'Reports & Queries' },
@@ -40,7 +39,7 @@ export default function Sidebar({ open, onClose }) {
           <X size={24} />
         </button>
       <div className="sidebar-brand">
-        <GraduationCap className="sidebar-logo" size={32} />
+        <img src="/logo.png" alt="CCS Logo" className="sidebar-logo-image" style={{ width: 40, height: 40, objectFit: 'contain', marginRight: 12 }} onError={(e) => { e.target.src = 'https://upload.wikimedia.org/wikipedia/en/thumb/e/ef/Pamantasan_ng_Cabuyao_logo.svg/1200px-Pamantasan_ng_Cabuyao_logo.svg.png'; e.target.onError = null; }} />
         <span className="sidebar-title">Student Profiling LMS</span>
       </div>
       <nav className="sidebar-nav">
@@ -59,6 +58,13 @@ export default function Sidebar({ open, onClose }) {
       </nav>
       <div className="sidebar-footer">
         <span className="sidebar-version">v1.0</span>
+        <p className="sidebar-credits">
+          System developed by:<br />
+          Bella, Mourine Kate Oshlen C.<br />
+          Borabo, Nicole S.<br />
+          Lorica, Ken Eubert R.<br />
+          Mendoza, Mayen Sofia T.
+        </p>
       </div>
     </aside>
     </>

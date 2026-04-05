@@ -7,17 +7,9 @@ cd /d "%~dp0student-profiling-lms"
 call npm install
 if errorlevel 1 goto :err
 
-echo [2/4] Installing backend dependencies...
-cd /d "%~dp0student-profiling-api"
-call composer install
-if errorlevel 1 goto :err
-
-echo [3/4] Running migrations...
-call php artisan migrate
-if errorlevel 1 goto :err
-
-echo [4/4] Seeding data...
-call php artisan db:seed
+echo [2/2] Installing backend dependencies...
+cd /d "%~dp0student-profiling-node"
+call npm install
 if errorlevel 1 goto :err
 
 echo.

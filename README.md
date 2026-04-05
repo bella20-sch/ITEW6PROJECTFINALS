@@ -1,72 +1,48 @@
 # Student Profiling LMS
 
-This README contains only the commands and directories needed to run the system.
+A comprehensive student information and profiling system for the College of Computer Studies.
 
-For data mapping and UML/entity documentation, see `DATA-MAPPING.md`.
+---
 
-## 1) Project Root Commands
+## How to Run the System (Easiest Way)
 
-Directory:
+Follow these simple steps to get everything started quickly:
 
-```text
-ITEW6PROJECTFINALS
-```
+1.  **Extract/Open** the project folder in your terminal or command prompt.
+2.  **Run the Setup**: Double-click **`setup.bat`**. This will install all necessary files for both the backend and frontend.
+3.  **Start the Project**: Double-click **`start-dev.bat`**. This will automatically open two new windows and start the system for you.
 
-Commands:
+Once started, just open your browser to:
+- **[http://localhost:3000](http://localhost:3000)** (Frontend)
+- **[http://localhost:5000](http://localhost:5000)** (Backend API)
 
-```bat
-setup.bat
-start-dev.bat
-```
+---
 
-What they do:
-- `setup.bat`: installs frontend/backend dependencies, runs backend migration and seed
-- `start-dev.bat`: starts backend and frontend dev servers in separate terminals
+## Manual Execution (Step-by-Step)
 
-## 2) Manual Commands by Directory
+If you prefer to run the components manually, follow these instructions:
 
-### Backend (Laravel API)
+### 1. Run the Backend (Server)
+1.  Open a new terminal window.
+2.  Navigate to the `student-profiling-node` folder.
+3.  Type `npm install` (only needed the first time).
+4.  Type `node server.js` to start the server.
+    *   *Backend will be active at http://localhost:5000*
 
-Directory:
+### 2. Run the Frontend (User Interface)
+1.  Open another new terminal window.
+2.  Navigate to the `student-profiling-lms` folder.
+3.  Type `npm install` (only needed the first time).
+4.  Type `npm run dev` to start the interface.
+    *   *Frontend will be active at http://localhost:3000*
 
-```text
-ITEW6PROJECTFINALS\student-profiling-api
-```
+---
 
-Commands:
+## Admin Login Credentials
+Use these details to log in to the dashboard:
 
-```bat
-composer install
-php artisan migrate
-php artisan db:seed
-serve.bat
-```
+- **Email**: `mis.admin@school.edu`
+- **Password**: `admin123`
 
-Optional health check:
+---
 
-```text
-http://127.0.0.1:8000/api/health
-```
-
-### Frontend (React + Vite)
-
-Directory:
-
-```text
-ITEW6PROJECTFINALS\student-profiling-lms
-```
-
-Commands:
-
-```bat
-npm install
-npm run dev
-```
-
-## 3) URLs and Default Admin Login
-
-- Frontend: `http://localhost:5173` (or next available Vite port)
-- Backend: `http://127.0.0.1:8000`
-- Default MIS/Admin:
-  - Email: `mis.admin@school.edu`
-  - Password: `admin123`
