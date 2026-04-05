@@ -16,32 +16,32 @@ export function DataProvider({ children }) {
   const [students, setStudents] = useState([])
   const [profiles, setProfiles] = useState({})
 
-  useEffect(() => {
-    let cancelled = false
-    async function load() {
-      if (!isAuthenticated || !token) {
-        setReady(false); setDepartments([]); setCourses([])
-        setFaculty([]); setStudents([]); setProfiles({})
-        return
-      }
-      try {
-        const [deps, crs, fac, studs] = await Promise.all([
-          apiFetch('/api/meta/departments', { token }),
-          apiFetch('/api/meta/courses', { token }),
-          apiFetch('/api/meta/faculty', { token }),
-          apiFetch('/api/students', { token }),
-        ])
-        if (cancelled) return
-        setDepartments(Array.isArray(deps) ? deps : [])
-        setCourses(Array.isArray(crs) ? crs : [])
-        setFaculty(Array.isArray(fac) ? fac : [])
-        setStudents(Array.isArray(studs) ? studs : [])
-        setReady(true)
-      } catch { if (!cancelled) setReady(false) }
+  const reloadDirectory = useCallback(async () => {
+    if (!isAuthenticated || !token) {
+      setReady(false)
+      setDepartments([]); setCourses([]); setFaculty([]); setStudents([]); setProfiles({})
+      return
     }
-    load()
-    return () => { cancelled = true }
+    try {
+      const [deps, crs, fac, studs] = await Promise.all([
+        apiFetch('/api/meta/departments', { token }),
+        apiFetch('/api/meta/courses', { token }),
+        apiFetch('/api/meta/faculty', { token }),
+        apiFetch('/api/students', { token }),
+      ])
+      setDepartments(Array.isArray(deps) ? deps : [])
+      setCourses(Array.isArray(crs) ? crs : [])
+      setFaculty(Array.isArray(fac) ? fac : [])
+      setStudents(Array.isArray(studs) ? studs : [])
+      setReady(true)
+    } catch {
+      setReady(false)
+    }
   }, [isAuthenticated, token])
+
+  useEffect(() => {
+    reloadDirectory()
+  }, [reloadDirectory])
 
   const fetchStudentProfile = useCallback(async (studentID) => {
     const id = Number(studentID)
@@ -181,7 +181,7 @@ export function DataProvider({ children }) {
   }), [departments, courses, faculty, students, profiles, token, fetchStudentProfile, showToast])
 
   return (
-    <DataContext.Provider value={{ ready, departments, courses, faculty, students, crud, subCrud, profiles }}>
+    <DataContext.Provider value={{ ready, departments, courses, faculty, students, crud, subCrud, profiles, reloadDirectory }}>
       {children}
     </DataContext.Provider>
   )

@@ -1,7 +1,15 @@
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3000'
-
+/**
+ * Dev + no VITE_API_BASE: use '' (same origin) so Vite proxies /api → localhost:5000.
+ * Set VITE_API_BASE=http://localhost:5000 only if you want to bypass the proxy.
+ * Production build: defaults to http://localhost:5000 unless VITE_API_BASE is set.
+ */
 export function getApiBase() {
-  return API_BASE.replace(/\/+$/, '')
+  const raw = import.meta.env.VITE_API_BASE
+  if (raw !== undefined && String(raw).trim() !== '') {
+    return String(raw).replace(/\/+$/, '')
+  }
+  if (import.meta.env.DEV) return ''
+  return 'http://localhost:5000'
 }
 
 export async function apiFetch(path, { token, method = 'GET', body, headers } = {}) {
