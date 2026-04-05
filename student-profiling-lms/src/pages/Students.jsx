@@ -18,6 +18,7 @@ export default function Students() {
   const [courseFilter, setCourseFilter] = useState('')
   const [yearFilter, setYearFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
+  const [typeFilter, setTypeFilter] = useState('')
   const [sortOrder, setSortOrder] = useState('az') // az | za
   const [modal, setModal] = useState(false)
   const [pendingSave, setPendingSave] = useState(null)
@@ -46,6 +47,11 @@ export default function Students() {
     // Enrollment status filter
     if (statusFilter) list = list.filter(s => s.enrollmentStatus === statusFilter)
 
+    // Student type (Regular / Irregular / Transferee)
+    if (typeFilter) {
+      list = list.filter(s => (s.studentType || 'Regular') === typeFilter)
+    }
+
     // Sort alphabetically by last name
     list.sort((a, b) => {
       const nameA = `${a.lastName} ${a.firstName}`.toLowerCase()
@@ -54,7 +60,7 @@ export default function Students() {
     })
 
     return list
-  }, [students, search, courseFilter, yearFilter, statusFilter, sortOrder])
+  }, [students, search, courseFilter, yearFilter, statusFilter, typeFilter, sortOrder])
 
   return (
     <div className="page">
@@ -119,6 +125,18 @@ export default function Students() {
             ]}
           />
           <FilterDropdown
+            ariaLabel="Filter by student type"
+            value={typeFilter}
+            onChange={setTypeFilter}
+            placeholder="All types"
+            options={[
+              { value: '', label: 'All types' },
+              { value: 'Regular', label: 'Regular' },
+              { value: 'Irregular', label: 'Irregular' },
+              { value: 'Transferee', label: 'Transferee' },
+            ]}
+          />
+          <FilterDropdown
             ariaLabel="Sort order"
             value={sortOrder}
             onChange={setSortOrder}
@@ -149,7 +167,10 @@ export default function Students() {
                   Year {student.yearLevel} • {student.section} • {course?.courseCode || '—'}
                 </span>
               </div>
-              <span className="student-badge">{student.enrollmentStatus}</span>
+              <div className="student-card-badges">
+                <span className="student-badge student-badge-type">{student.studentType || 'Regular'}</span>
+                <span className="student-badge">{student.enrollmentStatus}</span>
+              </div>
               <ChevronRight size={20} className="student-arrow" />
             </Link>
           )

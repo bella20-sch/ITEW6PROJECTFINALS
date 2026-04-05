@@ -65,6 +65,23 @@
       "officeLocation": "B-102",
       "middleName": "",
       "photo": ""
+    },
+    {
+      "facultyID": 3,
+      "departmentID": 1,
+      "firstName": "Hyunjin",
+      "lastName": "Hwang",
+      "middleName": "",
+      "position": "Instructor",
+      "employmentStatus": "Full-time",
+      "hireDate": "2026-04-05",
+      "email": "hyune.hwang@school.edu",
+      "password": "password123",
+      "contactNumber": "",
+      "officeLocation": "",
+      "courseID": 1,
+      "section": "4IT-B",
+      "photo": ""
     }
   ],
   "students": [
@@ -207,6 +224,34 @@
       "dateEnrolled": "",
       "courseID": 1,
       "departmentID": 1
+    },
+    {
+      "studentID": 5,
+      "studentNumber": "2201619",
+      "firstName": "Nicole",
+      "middleName": "Sadiz",
+      "lastName": "Borabo",
+      "suffix": "",
+      "gender": "Female",
+      "birthDate": "2026-04-09",
+      "birthProvince": "Marinduque",
+      "birthCity": "San Pedro",
+      "nationality": "Filipino",
+      "civilStatus": "Single",
+      "contactNumber": "09198871571",
+      "email": "nikol@email.com",
+      "streetAddress": "Blk 123 Lot 123",
+      "municipality": "Cabuyao",
+      "yearLevel": 4,
+      "section": "B",
+      "studentType": "Irregular",
+      "enrollmentStatus": "Enrolled",
+      "dateEnrolled": "2026-04-05",
+      "courseID": 1,
+      "departmentID": 1,
+      "photo": "",
+      "address": "Blk 123 Lot 123, Cabuyao",
+      "birthPlace": "San Pedro, Marinduque"
     }
   ],
   "academic": [

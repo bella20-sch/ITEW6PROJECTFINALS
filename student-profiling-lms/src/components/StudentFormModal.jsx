@@ -1,42 +1,7 @@
 import React from 'react'
 import Modal from './Modal'
 import { useToast } from '../context/ToastContext'
-
-const PH_CITIES = [
-  'Calamba', 'Cabuyao', 'San Pedro', 'Biñan', 'Santa Rosa', 'Calauan', 'Los Baños',
-  'Bay', 'Victoria', 'Pila', 'Pagsanjan', 'Lumban', 'Pangil', 'Mabitac', 'Siniloan',
-  'Famy', 'Pakil', 'Cavinti', 'Luisiana', 'Magdalena', 'Majayjay', 'Nagcarlan',
-  'Rizal', 'Santa Cruz', 'Paete', 'Kalayaan', 'Liliw', 'Sta. Maria',
-  // Metro Manila
-  'Manila', 'Quezon City', 'Makati', 'Pasig', 'Taguig', 'Mandaluyong', 'Marikina',
-  'Parañaque', 'Las Piñas', 'Muntinlupa', 'Valenzuela', 'Malabon', 'Navotas',
-  'Pasay', 'Caloocan', 'Pateros',
-  // Other major cities
-  'Cebu City', 'Davao City', 'Zamboanga City', 'Cagayan de Oro', 'Iloilo City',
-  'Bacolod', 'General Santos', 'Antipolo', 'Bacoor', 'Dasmariñas', 'Imus',
-  'Batangas City', 'Lipa', 'Tanauan', 'San Jose del Monte', 'Malolos',
-  'Meycauayan', 'Marilao', 'Baguio', 'Angeles', 'San Fernando (Pampanga)',
-  'Olongapo', 'Legazpi', 'Naga', 'Tacloban', 'Butuan', 'Iligan', 'Cotabato City',
-].sort()
-
-const PH_PROVINCES = [
-  'Laguna', 'Cavite', 'Batangas', 'Rizal', 'Quezon', 'Bulacan', 'Pampanga',
-  'Tarlac', 'Nueva Ecija', 'Pangasinan', 'Ilocos Norte', 'Ilocos Sur', 'La Union',
-  'Benguet', 'Ifugao', 'Mountain Province', 'Kalinga', 'Apayao', 'Abra',
-  'Cagayan', 'Isabela', 'Nueva Vizcaya', 'Quirino', 'Aurora', 'Zambales',
-  'Bataan', 'Metro Manila (NCR)', 'Cebu', 'Bohol', 'Negros Oriental',
-  'Negros Occidental', 'Iloilo', 'Capiz', 'Aklan', 'Antique', 'Guimaras',
-  'Leyte', 'Southern Leyte', 'Samar', 'Eastern Samar', 'Northern Samar',
-  'Biliran', 'Davao del Norte', 'Davao del Sur', 'Davao Oriental',
-  'Davao Occidental', 'Davao de Oro', 'South Cotabato', 'North Cotabato',
-  'Sultan Kudarat', 'Sarangani', 'Maguindanao', 'Lanao del Sur', 'Lanao del Norte',
-  'Zamboanga del Norte', 'Zamboanga del Sur', 'Zamboanga Sibugay',
-  'Misamis Oriental', 'Misamis Occidental', 'Bukidnon', 'Camiguin',
-  'Agusan del Norte', 'Agusan del Sur', 'Surigao del Norte', 'Surigao del Sur',
-  'Dinagat Islands', 'Palawan', 'Occidental Mindoro', 'Oriental Mindoro',
-  'Marinduque', 'Romblon', 'Albay', 'Camarines Norte', 'Camarines Sur',
-  'Catanduanes', 'Masbate', 'Sorsogon',
-].sort()
+import { PH_PROVINCES, citiesForProvince, provinceForMunicipality } from '../data/phProvinceCities'
 
 const SUFFIXES = ['', 'Jr.', 'Sr.', 'II', 'III', 'IV', 'V']
 const NATIONALITIES = ['Filipino', 'American', 'Chinese', 'Japanese', 'Korean', 'Other']
@@ -48,7 +13,7 @@ const defaultStudent = {
   firstName: '', middleName: '', lastName: '', suffix: '', gender: 'Male',
   birthDate: '', birthProvince: '', birthCity: '',
   nationality: 'Filipino', civilStatus: 'Single', contactNumber: '', email: '',
-  streetAddress: '', municipality: '',
+  streetAddress: '', addressProvince: '', municipality: '',
   yearLevel: 1, section: '', studentType: 'Regular', enrollmentStatus: 'Enrolled',
   dateEnrolled: '', courseID: '', departmentID: '', photo: '',
 }
@@ -56,13 +21,31 @@ const defaultStudent = {
 // Migrate old flat address/birthPlace to new fields
 function migrateStudent(s) {
   if (!s) return null
+  let birthProvince = s.birthProvince || ''
+  let birthCity = s.birthCity || ''
+  const flat = (s.birthPlace || '').trim()
+  if (!birthCity && flat) birthCity = flat
+  if (!birthProvince && flat.includes(',')) {
+    const idx = flat.lastIndexOf(',')
+    const maybeProvince = flat.slice(idx + 1).trim()
+    const maybeCity = flat.slice(0, idx).trim()
+    if (maybeProvince && PH_PROVINCES.includes(maybeProvince)) {
+      birthProvince = maybeProvince
+      birthCity = maybeCity
+    }
+  }
+  let addressProvince = s.addressProvince || ''
+  const municipality = s.municipality || ''
+  if (!addressProvince && municipality) addressProvince = provinceForMunicipality(municipality)
+
   return {
     ...defaultStudent,
     ...s,
     streetAddress: s.streetAddress || s.address || '',
-    municipality: s.municipality || '',
-    birthProvince: s.birthProvince || '',
-    birthCity: s.birthCity || s.birthPlace || '',
+    municipality,
+    addressProvince,
+    birthProvince,
+    birthCity,
   }
 }
 
@@ -87,6 +70,20 @@ export default function StudentFormModal({ open, onClose, courses, departments, 
 
   const set = (field) => (e) => setData(prev => ({ ...prev, [field]: e.target.value }))
 
+  const birthCitiesForProvince = React.useMemo(
+    () => citiesForProvince(data.birthProvince),
+    [data.birthProvince],
+  )
+  const birthCityInList = !data.birthCity || birthCitiesForProvince.includes(data.birthCity)
+  const birthCitySelectValue = !data.birthProvince ? '' : (!data.birthCity ? '' : (birthCityInList ? data.birthCity : '__OTHER__'))
+
+  const addressCitiesForProvince = React.useMemo(
+    () => citiesForProvince(data.addressProvince),
+    [data.addressProvince],
+  )
+  const addressMuniInList = !data.municipality || addressCitiesForProvince.includes(data.municipality)
+  const addressMuniSelectValue = !data.addressProvince ? '' : (!data.municipality ? '' : (addressMuniInList ? data.municipality : '__OTHER__'))
+
   const handlePhotoChange = (e) => {
     const file = e.target.files[0]
     if (!file) return
@@ -105,7 +102,7 @@ export default function StudentFormModal({ open, onClose, courses, departments, 
     setError('')
     const payload = {
       ...data,
-      address: [data.streetAddress, data.municipality].filter(Boolean).join(', '),
+      address: [data.streetAddress, data.municipality, data.addressProvince].filter(Boolean).join(', '),
       birthPlace: [data.birthCity, data.birthProvince].filter(Boolean).join(', '),
       courseID: Number(data.courseID),
       departmentID: Number(data.departmentID),
@@ -233,17 +230,54 @@ export default function StudentFormModal({ open, onClose, courses, departments, 
           <div className="form-row-2">
             <div>
               <label>Birth Province *</label>
-              <select value={data.birthProvince} onChange={set('birthProvince')} required>
+              <select
+                value={data.birthProvince}
+                onChange={(e) => {
+                  const province = e.target.value
+                  setData((prev) => {
+                    const cities = citiesForProvince(province)
+                    const keep = cities.includes(prev.birthCity)
+                    return { ...prev, birthProvince: province, birthCity: keep ? prev.birthCity : '' }
+                  })
+                }}
+                required
+              >
                 <option value="">— Select Province —</option>
                 {PH_PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
               </select>
             </div>
             <div>
               <label>Birth City / Municipality *</label>
-              <select value={data.birthCity} onChange={set('birthCity')} required>
-                <option value="">— Select City —</option>
-                {PH_CITIES.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
+              {!data.birthProvince ? (
+                <select disabled value="">
+                  <option value="">Select province first</option>
+                </select>
+              ) : (
+                <>
+                  <select
+                    value={birthCitySelectValue}
+                    onChange={(e) => {
+                      const v = e.target.value
+                      if (v === '__OTHER__') setData(prev => ({ ...prev, birthCity: '' }))
+                      else setData(prev => ({ ...prev, birthCity: v }))
+                    }}
+                    required={birthCitySelectValue !== '__OTHER__'}
+                  >
+                    <option value="">— Select City / Municipality —</option>
+                    {birthCitiesForProvince.map(c => <option key={c} value={c}>{c}</option>)}
+                    <option value="__OTHER__">Other (specify)</option>
+                  </select>
+                  {birthCitySelectValue === '__OTHER__' && (
+                    <input
+                      value={data.birthCity}
+                      onChange={(e) => setData(prev => ({ ...prev, birthCity: e.target.value }))}
+                      placeholder="City or municipality"
+                      required
+                      style={{ marginTop: 6 }}
+                    />
+                  )}
+                </>
+              )}
             </div>
           </div>
 
@@ -276,11 +310,59 @@ export default function StudentFormModal({ open, onClose, courses, departments, 
           />
           <label>Street / Unit / House No. *</label>
           <input value={data.streetAddress} onChange={set('streetAddress')} placeholder="e.g. 123 Rizal St., Brgy. San Jose" required />
-          <label>Municipality / City *</label>
-          <select value={data.municipality} onChange={set('municipality')} required>
-            <option value="">— Select Municipality / City —</option>
-            {PH_CITIES.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
+          <div className="form-row-2">
+            <div>
+              <label>Province *</label>
+              <select
+                value={data.addressProvince}
+                onChange={(e) => {
+                  const province = e.target.value
+                  setData((prev) => {
+                    const cities = citiesForProvince(province)
+                    const keep = cities.includes(prev.municipality)
+                    return { ...prev, addressProvince: province, municipality: keep ? prev.municipality : '' }
+                  })
+                }}
+                required
+              >
+                <option value="">— Select Province —</option>
+                {PH_PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
+            <div>
+              <label>Municipality / City *</label>
+              {!data.addressProvince ? (
+                <select disabled value="">
+                  <option value="">Select province first</option>
+                </select>
+              ) : (
+                <>
+                  <select
+                    value={addressMuniSelectValue}
+                    onChange={(e) => {
+                      const v = e.target.value
+                      if (v === '__OTHER__') setData(prev => ({ ...prev, municipality: '' }))
+                      else setData(prev => ({ ...prev, municipality: v }))
+                    }}
+                    required={addressMuniSelectValue !== '__OTHER__'}
+                  >
+                    <option value="">— Select Municipality / City —</option>
+                    {addressCitiesForProvince.map(c => <option key={c} value={c}>{c}</option>)}
+                    <option value="__OTHER__">Other (specify)</option>
+                  </select>
+                  {addressMuniSelectValue === '__OTHER__' && (
+                    <input
+                      value={data.municipality}
+                      onChange={(e) => setData(prev => ({ ...prev, municipality: e.target.value }))}
+                      placeholder="Municipality or city"
+                      required
+                      style={{ marginTop: 6 }}
+                    />
+                  )}
+                </>
+              )}
+            </div>
+          </div>
         </div>
 
         <div className="form-section">

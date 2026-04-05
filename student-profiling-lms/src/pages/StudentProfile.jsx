@@ -365,7 +365,7 @@ export default function StudentProfile() {
         <div className="profile-meta">
           <h1>{fullName}</h1>
           <span className="profile-id">Student No.: {student.studentNumber || student.studentID}</span>
-          <span className="profile-badge">Year {student.yearLevel} • {student.section} • {course?.courseCode || '—'}</span>
+          <span className="profile-badge">Year {student.yearLevel} • {student.section} • {course?.courseCode || '—'} • {student.studentType || 'Regular'}</span>
           {gpa != null && <div className="profile-gpa"><GraduationCap size={18} /> GPA: {gpa} • {latestAcademic?.academicStanding}</div>}
         </div>
       </div>
@@ -378,6 +378,7 @@ export default function StudentProfile() {
             <li>Gender: {student.gender} • {student.nationality} • {student.civilStatus}</li>
             <li>Contact: {student.contactNumber || '—'}</li>
             <li>Address: {student.address || '—'}</li>
+            <li>Student type: <strong>{student.studentType || 'Regular'}</strong></li>
             <li>Status: <span className="badge-active">{student.enrollmentStatus}</span></li>
             <li>Enrolled: {student.dateEnrolled}</li>
           </ul>
