@@ -1,6 +1,7 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { LogOut, Menu, Shield } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
 import { useState } from 'react'
 
 const pageTitles = {
@@ -17,6 +18,7 @@ export default function Header({ onMenuClick }) {
   const location = useLocation()
   const navigate = useNavigate()
   const { currentUser, logout } = useAuth()
+  const { showToast } = useToast()
   const [loggingOut, setLoggingOut] = useState(false)
   const path = location.pathname
   const title = path.startsWith('/students/') ? 'Student Profile' : pageTitles[path] || 'Student Profiling LMS'
@@ -41,7 +43,8 @@ export default function Header({ onMenuClick }) {
           onClick={async () => {
             setLoggingOut(true)
             await logout()
-            navigate('/login', { replace: true })
+            showToast('Logged out successfully.', 'success')
+            setTimeout(() => navigate('/login', { replace: true }), 1200)
             setLoggingOut(false)
           }}
         >
