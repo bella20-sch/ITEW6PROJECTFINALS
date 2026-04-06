@@ -2,8 +2,9 @@ import { useState, useRef } from 'react'
 import { useData } from '../context/DataContext'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
-import { UserCircle, Plus, Pencil, Trash2, Search } from 'lucide-react'
+import { UserCircle, Plus, Pencil, Trash2, Search, Building2, Sparkles, Briefcase } from 'lucide-react'
 import Modal from '../components/Modal'
+import ReqStar from '../components/ReqStar'
 import FilterDropdown from '../components/FilterDropdown'
 import ConfirmModal from '../components/ConfirmModal'
 
@@ -97,6 +98,8 @@ export default function Faculty() {
   const faculty = crud.faculty.getAll()
   const statuses = ['Full-time', 'Part-time', 'Contract']
 
+  const fullTimeCount = faculty.filter((f) => f.employmentStatus === 'Full-time').length
+
   const filtered = faculty
     .filter(f => {
       if (statusFilter && f.employmentStatus !== statusFilter) return false
@@ -115,11 +118,48 @@ export default function Faculty() {
 
   return (
     <div className="page">
-      <div className="students-page-header">
-        <div className="students-page-title-row">
-          <h2>Faculty</h2>
-          {isAdmin && <button className="btn btn-primary" onClick={openAdd}><Plus size={18} /> Add Faculty</button>}
+      <header className="faculty-hero" aria-labelledby="faculty-hero-title">
+        <div className="faculty-hero-glow" aria-hidden="true" />
+        <div className="faculty-hero-grid" aria-hidden="true" />
+        <div className="faculty-hero-inner">
+          <div className="faculty-hero-copy">
+            <div className="faculty-hero-badge">
+              <span className="faculty-hero-badge-icon">
+                <UserCircle size={18} strokeWidth={2.25} aria-hidden />
+              </span>
+              <span className="faculty-hero-badge-text">CCS · Faculty directory</span>
+            </div>
+            <h2 id="faculty-hero-title" className="faculty-hero-title">
+              Teaching & staff roster
+            </h2>
+            <p className="faculty-hero-sub">
+              CCS instructors and staff — roles, departments, contacts, and employment status. Admins can add or update records.
+            </p>
+            <ul className="faculty-hero-tags">
+              <li><Sparkles size={12} strokeWidth={2} aria-hidden /> {faculty.length} faculty</li>
+              <li><Building2 size={12} strokeWidth={2} aria-hidden /> {departments.length} departments</li>
+              <li><Briefcase size={12} strokeWidth={2} aria-hidden /> {fullTimeCount} full-time</li>
+            </ul>
+          </div>
+          <div className="faculty-hero-visual" aria-hidden="true">
+            <div className="faculty-hero-orbit">
+              <span className="faculty-hero-orbit-ring" />
+              <span className="faculty-hero-orbit-dot faculty-hero-orbit-dot--a" />
+              <span className="faculty-hero-orbit-dot faculty-hero-orbit-dot--b" />
+              <span className="faculty-hero-orbit-center">
+                <UserCircle size={28} strokeWidth={1.85} />
+              </span>
+            </div>
+          </div>
         </div>
+      </header>
+
+      <div className="students-page-header">
+        {isAdmin && (
+          <div className="students-page-title-row students-page-title-row--faculty-toolbar">
+            <button type="button" className="btn btn-primary" onClick={openAdd}><Plus size={18} /> Add Faculty</button>
+          </div>
+        )}
         <div className="students-search-row">
           <div className="search-box" style={{ flex: 1 }}>
             <Search size={18} />
@@ -153,7 +193,7 @@ export default function Faculty() {
         </div>
       </div>
 
-      <div className="faculty-list">
+      <div className="faculty-list" role="region" aria-labelledby="faculty-hero-title">
         {filtered.map(f => (
           <div key={f.facultyID} className="faculty-row">
             <div className="faculty-icon" style={{ overflow: 'hidden' }}>
@@ -221,11 +261,11 @@ export default function Faculty() {
             </div>
 
             <div className="form-row">
-              <div><label>First Name *</label><input value={form.firstName} onChange={e => setForm({ ...form, firstName: e.target.value })} required /></div>
+              <div><label>First Name <ReqStar /></label><input value={form.firstName} onChange={e => setForm({ ...form, firstName: e.target.value })} required /></div>
               <div><label>Middle Name</label><input value={form.middleName} onChange={e => setForm({ ...form, middleName: e.target.value })} /></div>
-              <div><label>Last Name *</label><input value={form.lastName} onChange={e => setForm({ ...form, lastName: e.target.value })} required /></div>
+              <div><label>Last Name <ReqStar /></label><input value={form.lastName} onChange={e => setForm({ ...form, lastName: e.target.value })} required /></div>
             </div>
-            <label>Position *</label>
+            <label>Position <ReqStar /></label>
             <input value={form.position} onChange={e => setForm({ ...form, position: e.target.value })} required placeholder="e.g. Professor, Instructor" />
             <label>Employment Status</label>
             <select value={form.employmentStatus} onChange={e => setForm({ ...form, employmentStatus: e.target.value })}>
@@ -233,7 +273,7 @@ export default function Faculty() {
             </select>
             <label>Hire Date</label>
             <input type="date" value={form.hireDate} onChange={e => setForm({ ...form, hireDate: e.target.value })} />
-            <label>Email *</label>
+            <label>Email <ReqStar /></label>
             <input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} required />
             <label>Contact Number</label>
             <input type="tel" value={form.contactNumber} onChange={e => setForm({ ...form, contactNumber: e.target.value })}

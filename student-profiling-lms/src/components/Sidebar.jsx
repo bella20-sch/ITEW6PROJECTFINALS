@@ -10,7 +10,7 @@ const navItems = [
   { path: 'reports', icon: FileBarChart, label: 'Reports & Queries' },
 ]
 
-export default function Sidebar({ open, onClose }) {
+export default function Sidebar({ open, onClose, collapsed }) {
   const { currentUser } = useAuth()
   let items = navItems
   if (currentUser?.role === 'Admin') {
@@ -34,12 +34,12 @@ export default function Sidebar({ open, onClose }) {
   return (
     <>
       <div className={`sidebar-overlay ${open ? 'active' : ''}`} onClick={onClose} aria-hidden="true" />
-      <aside className={`sidebar ${open ? 'sidebar-open' : ''}`}>
+      <aside className={`sidebar ${open ? 'sidebar-open' : ''} ${collapsed ? 'sidebar--collapsed' : ''}`}>
         <button className="sidebar-close-btn" onClick={onClose} aria-label="Close menu">
           <X size={24} />
         </button>
       <div className="sidebar-brand">
-        <img src="/logo.png" alt="CCS Logo" className="sidebar-logo-image" style={{ width: 40, height: 40, objectFit: 'contain', marginRight: 12 }} onError={(e) => { e.target.src = 'https://upload.wikimedia.org/wikipedia/en/thumb/e/ef/Pamantasan_ng_Cabuyao_logo.svg/1200px-Pamantasan_ng_Cabuyao_logo.svg.png'; e.target.onError = null; }} />
+        <img src="/logo.png" alt="CCS Logo" className="sidebar-logo-image" onError={(e) => { e.target.src = 'https://upload.wikimedia.org/wikipedia/en/thumb/e/ef/Pamantasan_ng_Cabuyao_logo.svg/1200px-Pamantasan_ng_Cabuyao_logo.svg.png'; e.target.onError = null; }} />
         <span className="sidebar-title">Student Profiling LMS</span>
       </div>
       <nav className="sidebar-nav">
@@ -50,9 +50,10 @@ export default function Sidebar({ open, onClose }) {
             className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
             end={path === ''}
             onClick={onClose}
+            title={label}
           >
             <Icon size={20} strokeWidth={2} />
-            <span>{label}</span>
+            <span className="sidebar-link-text">{label}</span>
           </NavLink>
         ))}
       </nav>

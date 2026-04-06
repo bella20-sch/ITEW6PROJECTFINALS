@@ -1,8 +1,9 @@
 import { useLocation, useNavigate } from 'react-router-dom'
-import { LogOut, Menu, Shield } from 'lucide-react'
+import { LogOut, Menu, Moon, Sun, PanelLeftClose, PanelLeftOpen, Shield } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
+import { getTheme, setTheme } from '../lib/theme'
 
 const pageTitles = {
   '/': 'Dashboard',
@@ -14,27 +15,61 @@ const pageTitles = {
   '/admin': 'MIS/Admin',
 }
 
-export default function Header({ onMenuClick }) {
+export default function Header({ onMenuClick, sidebarCollapsed, onToggleSidebarCollapse }) {
   const location = useLocation()
   const navigate = useNavigate()
   const { currentUser, logout } = useAuth()
   const { showToast } = useToast()
   const [loggingOut, setLoggingOut] = useState(false)
+  const [colorMode, setColorMode] = useState(() => getTheme())
   const path = location.pathname
+
+  const toggleColorMode = useCallback(() => {
+    const next = colorMode === 'dark' ? 'light' : 'dark'
+    setTheme(next)
+    setColorMode(next)
+  }, [colorMode])
   const title = path.startsWith('/students/') ? 'Student Profile' : pageTitles[path] || 'Student Profiling LMS'
+
+  const userDisplayName = currentUser
+    ? [currentUser.firstName, currentUser.lastName].filter(Boolean).join(' ').trim() ||
+      currentUser.name ||
+      currentUser.email ||
+      (currentUser.role ? String(currentUser.role) : '')
+    : ''
 
   return (
     <header className="header">
-      <button className="header-menu-btn" onClick={onMenuClick} aria-label="Open menu">
-        <Menu size={24} />
-      </button>
-      <h1 className="header-title">{title}</h1>
+      <div className="header-start">
+        <button className="header-menu-btn" onClick={onMenuClick} aria-label="Open menu">
+          <Menu size={24} />
+        </button>
+        <button
+          type="button"
+          className="header-sidebar-toggle"
+          onClick={onToggleSidebarCollapse}
+          aria-expanded={!sidebarCollapsed}
+          aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          {sidebarCollapsed ? <PanelLeftOpen size={22} strokeWidth={2} /> : <PanelLeftClose size={22} strokeWidth={2} />}
+        </button>
+        <h1 className="header-title">{title}</h1>
+      </div>
       <div className="header-actions">
         <span className="header-badge">School Year 2024-2025</span>
-        {currentUser && (
-          <span className="header-user">
-            <Shield size={16} />
-            {currentUser.firstName} {currentUser.lastName}
+        <button
+          type="button"
+          className="header-theme-toggle"
+          onClick={toggleColorMode}
+          aria-label={colorMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          aria-pressed={colorMode === 'dark'}
+        >
+          {colorMode === 'dark' ? <Sun size={18} strokeWidth={2} aria-hidden /> : <Moon size={18} strokeWidth={2} aria-hidden />}
+        </button>
+        {currentUser && userDisplayName && (
+          <span className="header-user" title="Signed-in account">
+            <Shield size={16} strokeWidth={2} className="header-user-shield" aria-hidden />
+            {userDisplayName}
           </span>
         )}
         <button

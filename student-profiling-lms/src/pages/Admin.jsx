@@ -154,7 +154,7 @@ export default function Admin() {
           <div className="admin-hero-copy">
             <div className="admin-hero-badge">
               <span className="admin-hero-badge-icon">
-                <Shield size={22} strokeWidth={2.25} aria-hidden />
+                <Shield size={18} strokeWidth={2.25} aria-hidden />
               </span>
               <span className="admin-hero-badge-text">MIS · Access control</span>
             </div>
@@ -165,8 +165,9 @@ export default function Admin() {
               Create login accounts and assign them as student or faculty — aligned with departments, programs, and advising.
             </p>
             <ul className="admin-hero-tags">
-              <li><Sparkles size={14} aria-hidden /> Role-based LMS access</li>
-              <li><Building2 size={14} aria-hidden /> {departments.length} departments</li>
+              <li><Sparkles size={12} strokeWidth={2} aria-hidden /> Role-based LMS access</li>
+              <li><Building2 size={12} strokeWidth={2} aria-hidden /> {departments.length} departments</li>
+              <li><Users size={12} strokeWidth={2} aria-hidden /> {students.length} students</li>
             </ul>
           </div>
           <div className="admin-hero-visual" aria-hidden="true">
@@ -175,7 +176,7 @@ export default function Admin() {
               <span className="admin-hero-orbit-dot admin-hero-orbit-dot--a" />
               <span className="admin-hero-orbit-dot admin-hero-orbit-dot--b" />
               <span className="admin-hero-orbit-center">
-                <Shield size={36} strokeWidth={1.75} />
+                <Shield size={28} strokeWidth={1.85} />
               </span>
             </div>
           </div>
