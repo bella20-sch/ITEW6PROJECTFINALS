@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { GraduationCap, Lock, Mail, Eye, EyeOff } from 'lucide-react'
+import { GraduationCap, Lock, Mail, Eye, EyeOff, Moon, Sun } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
+import { getTheme, setTheme } from '../lib/theme'
 
 export default function Login() {
   const { login } = useAuth()
@@ -15,8 +16,15 @@ export default function Login() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [colorMode, setColorMode] = useState(() => getTheme())
 
   const canSubmit = useMemo(() => form.email.trim() && form.password, [form.email, form.password])
+
+  const toggleColorMode = () => {
+    const next = colorMode === 'dark' ? 'light' : 'dark'
+    setTheme(next)
+    setColorMode(next)
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -50,23 +58,46 @@ export default function Login() {
   return (
     <div className="auth-shell">
       <div className="auth-left">
+        <button
+          type="button"
+          className="auth-theme-toggle"
+          onClick={toggleColorMode}
+          aria-label={colorMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          aria-pressed={colorMode === 'dark'}
+          title={colorMode === 'dark' ? 'Light mode' : 'Dark mode'}
+        >
+          {colorMode === 'dark' ? <Sun size={18} strokeWidth={2} aria-hidden /> : <Moon size={18} strokeWidth={2} aria-hidden />}
+        </button>
+        <span className="auth-left-ring auth-left-ring--a" aria-hidden />
+        <span className="auth-left-ring auth-left-ring--b" aria-hidden />
+        <span className="auth-left-ring auth-left-ring--c" aria-hidden />
+        <span className="auth-left-ring auth-left-ring--d" aria-hidden />
+        <span className="auth-kicker">CCS Administration</span>
         <div className="auth-left-logo">
           <img src="/logo.png" alt="CCS Logo" />
         </div>
-        <h1>College of Computer Studies</h1>
+        <h1>Student Profiling Portal</h1>
         <p className="auth-description">
-          <strong>Student Profiling Portal</strong><br />
-          <span className="institution">Pamantasan ng Cabuyao</span><br />
-          <span className="programs-badge">
-            BSIT • BSCS • BSIS
-          </span>
+          Secure academic records and student development insights for the College of Computer Studies.
         </p>
+        <div className="auth-program-rail">
+          <span className="programs-badge">BSIT</span>
+          <span className="programs-badge">BSCS</span>
+          <span className="programs-badge">BSIS</span>
+        </div>
+        <ul className="auth-feature-list" aria-hidden>
+          <li><GraduationCap size={16} /> Academic monitoring</li>
+          <li><Mail size={16} /> Centralized records</li>
+          <li><Lock size={16} /> Protected access</li>
+        </ul>
       </div>
 
       <div className="auth-right">
         <div className="auth-card">
-          <h2>Admin Login</h2>
-          <p className="subtitle">Please enter your credentials to access the Student Profiling System.</p>
+          <div className="auth-card-head">
+            <h2>Admin Login</h2>
+            <p className="subtitle">Sign in to manage the CCS Student Profiling LMS.</p>
+          </div>
 
           {/* Toast takes over error display */}
 
@@ -113,6 +144,7 @@ export default function Login() {
               {busy ? 'Logging in...' : 'Log In'}
             </button>
           </form>
+          <p className="auth-note">Authorized CCS personnel only.</p>
         </div>
       </div>
     </div>
