@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState, useRef, useMemo } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import {
   User, Mail, Calendar, AlertTriangle, BookOpen, Briefcase, Heart, Users,
@@ -6,7 +6,7 @@ import {
 } from 'lucide-react'
 import { useData } from '../context/DataContext'
 import { useAuth } from '../context/AuthContext'
-import StudentFormModal from '../components/StudentFormModal'
+import ReqStar from '../components/ReqStar'
 import Modal from '../components/Modal'
 
 const PNC_GRADES = [
@@ -22,6 +22,25 @@ function getPNCDesc(gpa) {
   if (isNaN(val)) return ''
   const match = PNC_GRADES.find(g => val >= g.min && val <= (g.max + 0.001))
   return match ? match.label : ''
+}
+
+/** Sort key: later school year + semester sorts higher (for newest-first lists). */
+function academicTermSortKey(ah) {
+  const sy = String(ah.schoolYear || '')
+  const start = parseInt(sy.split(/[-–]/)[0], 10) || 0
+  const sem = String(ah.semester || '').toLowerCase()
+  let semOrder = 1
+  if (sem.includes('2nd') || sem === '2' || sem.includes('second')) semOrder = 2
+  else if (sem.includes('summer')) semOrder = 3
+  return start * 10 + semOrder
+}
+
+/** Visual tone for standing text only (keeps UI consistent; two accents + neutral). */
+function academicStandingTone(standing) {
+  const s = String(standing || '').toLowerCase()
+  if (s.includes('fail') || s.includes('inc') || s.includes('drop')) return 'risk'
+  if (s.includes('president') || s.includes('vpaa') || s.includes('dean')) return 'honors'
+  return 'neutral'
 }
 
 // Confirmation modal
@@ -77,7 +96,7 @@ function SubModal({ title, open, onClose, fields, initial, onSave }) {
 
           return (
             <div key={f.key}>
-              <label>{f.label}{f.required ? ' *' : ''}</label>
+              <label>{f.label}{f.required ? <> <ReqStar /></> : null}</label>
               {isSelect ? (
                 <>
                   <select
@@ -257,11 +276,16 @@ export default function StudentProfile() {
 
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
-  const [editModal, setEditModal] = useState(false)
   const [subModal, setSubModal] = useState({ open: false, type: null, item: null })
   const [confirm, setConfirm] = useState({ open: false, title: '', message: '', onConfirm: null, danger: false })
 
   const student = profiles[Number(id)] || null
+
+  const sortedAcademicHistory = useMemo(() => {
+    const list = [...(student?.academicHistory || [])]
+    list.sort((a, b) => academicTermSortKey(b) - academicTermSortKey(a))
+    return list
+  }, [student?.academicHistory])
 
   useEffect(() => {
     let cancelled = false
@@ -350,7 +374,11 @@ export default function StudentProfile() {
       <div className="profile-toolbar">
         <Link to="/students" className="back-link"><ArrowLeft size={18} /> Back to Students</Link>
         <div>
-          {isAdmin && <button className="btn btn-outline" onClick={() => setEditModal(true)}><Pencil size={16} /> Edit</button>}
+          {isAdmin && (
+            <Link to={`/students/${id}/edit`} className="btn btn-outline">
+              <Pencil size={16} /> Edit
+            </Link>
+          )}
           {isAdmin && <button className="btn btn-danger" onClick={handleDeleteStudent}><Trash2 size={16} /> Delete</button>}
         </div>
       </div>
@@ -385,25 +413,60 @@ export default function StudentProfile() {
         </ProfileSection>
 
         <ProfileSection icon={BookOpen} title="Academic History" action={addBtn('academic')}>
-          {(student.academicHistory || []).length ? (
-            <div className="table-wrap">
-              <table className="profile-table">
-                <thead><tr><th>School Year</th><th>Sem</th><th>GPA</th><th>Rating / Standing</th><th>Units</th>{isAdmin && <th></th>}</tr></thead>
-                <tbody>
-                  {student.academicHistory.map(ah => (
-                    <tr key={ah.academicID}>
-                      <td>{ah.schoolYear}</td><td>{ah.semester}</td><td>{ah.gpa}</td>
-                      <td>{ah.academicStanding}</td><td>{ah.completedUnits}/{ah.totalUnits}</td>
-                      {isAdmin && <td style={{ display: 'flex', gap: 4 }}>
-                        <button className="btn-icon" onClick={() => setSubModal({ open: true, type: 'academic', item: ah })}><Pencil size={13} /></button>
-                        <button className="btn-icon btn-danger" onClick={() => handleSubDelete('academic', ah)}><Trash2 size={13} /></button>
-                      </td>}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : <p className="muted">No records</p>}
+          {sortedAcademicHistory.length ? (
+            <ul className="academic-history-list" aria-label="Academic terms, newest first">
+              {sortedAcademicHistory.map((ah) => {
+                const standingTone = academicStandingTone(ah.academicStanding)
+                const standingClass = `academic-standing academic-standing--${standingTone}`
+                const completed = Number(ah.completedUnits)
+                const total = Number(ah.totalUnits)
+                const unitsDd = Number.isFinite(completed) && Number.isFinite(total)
+                  ? `${completed} / ${total} completed`
+                  : '—'
+                const tierFromGpa = getPNCDesc(ah.gpa)
+                const showTierHint = tierFromGpa && tierFromGpa !== ah.academicStanding
+                const semRaw = String(ah.semester || '').trim()
+                const semesterPart = !semRaw
+                  ? '—'
+                  : /semester/i.test(semRaw)
+                    ? semRaw
+                    : `${semRaw} semester`
+                const termTitle = [ah.schoolYear, semesterPart].filter(Boolean).join(' · ')
+                return (
+                  <li key={ah.academicID} className="academic-history-item">
+                    <div className="academic-history-item-body">
+                      <p className="academic-history-term">{termTitle}</p>
+                      <dl className="academic-history-dl">
+                        <dt>GPA</dt>
+                        <dd>
+                          <span className="academic-history-gpa-num">{ah.gpa ?? '—'}</span>
+                          {showTierHint && (
+                            <span className="academic-history-dl-note"> ({tierFromGpa} by scale)</span>
+                          )}
+                        </dd>
+                        <dt>Standing</dt>
+                        <dd><span className={standingClass}>{ah.academicStanding || '—'}</span></dd>
+                        <dt>Units</dt>
+                        <dd><span className="academic-history-units">{unitsDd}</span></dd>
+                      </dl>
+                    </div>
+                    {isAdmin && (
+                      <div className="academic-history-item-actions">
+                        <button type="button" className="btn-icon" aria-label="Edit term" onClick={() => setSubModal({ open: true, type: 'academic', item: ah })}>
+                          <Pencil size={14} />
+                        </button>
+                        <button type="button" className="btn-icon btn-danger" aria-label="Delete term" onClick={() => handleSubDelete('academic', ah)}>
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    )}
+                  </li>
+                )
+              })}
+            </ul>
+          ) : (
+            <p className="muted">No records</p>
+          )}
         </ProfileSection>
 
         <ProfileSection icon={Heart} title="Medical History" action={addBtn('medical')}>
@@ -506,31 +569,6 @@ export default function StudentProfile() {
           ) : <p className="muted">No skills recorded</p>}
         </ProfileSection>
       </div>
-
-      {isAdmin && (
-        <StudentFormModal
-          open={editModal}
-          onClose={() => setEditModal(false)}
-          student={student}
-          courses={courses}
-          departments={departments}
-          onSave={async (s) => {
-            setEditModal(false)
-            askConfirm(
-              'Confirm Edit',
-              `Save changes to ${fullName}'s profile?`,
-              async () => {
-                closeConfirm()
-                try {
-                  await crud.students.update(student.studentID, s)
-                } catch (err) {
-                  // toast already shown by DataContext on error
-                }
-              }
-            )
-          }}
-        />
-      )}
 
       {subModal.open && (
         <SubModal

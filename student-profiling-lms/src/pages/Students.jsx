@@ -1,17 +1,13 @@
 import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { Search, ChevronRight, Plus } from 'lucide-react'
+import { Search, ChevronRight, Plus, Users, UserCheck, BookOpen, Sparkles, GraduationCap } from 'lucide-react'
 import { useData } from '../context/DataContext'
 import { useAuth } from '../context/AuthContext'
-import { useToast } from '../context/ToastContext'
-import StudentFormModal from '../components/StudentFormModal'
 import FilterDropdown from '../components/FilterDropdown'
-import ConfirmModal from '../components/ConfirmModal'
 
 export default function Students() {
-  const { students, courses, departments, crud } = useData()
+  const { students, courses, departments } = useData()
   const { currentUser } = useAuth()
-  const { showToast } = useToast()
   const isAdmin = currentUser?.role === 'Admin'
 
   const [search, setSearch] = useState('')
@@ -20,9 +16,6 @@ export default function Students() {
   const [statusFilter, setStatusFilter] = useState('')
   const [typeFilter, setTypeFilter] = useState('')
   const [sortOrder, setSortOrder] = useState('az') // az | za
-  const [modal, setModal] = useState(false)
-  const [pendingSave, setPendingSave] = useState(null)
-  const [confirm, setConfirm] = useState({ open: false })
 
   const filtered = useMemo(() => {
     let list = [...students]
@@ -62,17 +55,54 @@ export default function Students() {
     return list
   }, [students, search, courseFilter, yearFilter, statusFilter, typeFilter, sortOrder])
 
+  const enrolledCount = students.filter((s) => s.enrollmentStatus === 'Enrolled').length
+
   return (
     <div className="page">
-      <div className="students-page-header">
-        <div className="students-page-title-row">
-          <h2>All Students</h2>
-          {isAdmin && (
-            <button className="btn btn-primary" onClick={() => setModal(true)}>
-              <Plus size={18} /> Add Student
-            </button>
-          )}
+      <header className="students-hero" aria-labelledby="students-hero-title">
+        <div className="students-hero-glow" aria-hidden="true" />
+        <div className="students-hero-grid" aria-hidden="true" />
+        <div className="students-hero-inner">
+          <div className="students-hero-copy">
+            <div className="students-hero-badge">
+              <span className="students-hero-badge-icon">
+                <Users size={18} strokeWidth={2.25} aria-hidden />
+              </span>
+              <span className="students-hero-badge-text">CCS · Student directory</span>
+            </div>
+            <h2 id="students-hero-title" className="students-hero-title">
+              Student records & profiles
+            </h2>
+            <p className="students-hero-sub">
+              Search and filter the CCS student body by course, year level, enrollment, and type. Administrators can register new students from here.
+            </p>
+            <ul className="students-hero-tags">
+              <li><Sparkles size={12} strokeWidth={2} aria-hidden /> {students.length} students</li>
+              <li><UserCheck size={12} strokeWidth={2} aria-hidden /> {enrolledCount} enrolled</li>
+              <li><BookOpen size={12} strokeWidth={2} aria-hidden /> {courses.length} programs</li>
+            </ul>
+          </div>
+          <div className="students-hero-visual" aria-hidden="true">
+            <div className="students-hero-orbit">
+              <span className="students-hero-orbit-ring" />
+              <span className="students-hero-orbit-dot students-hero-orbit-dot--a" />
+              <span className="students-hero-orbit-dot students-hero-orbit-dot--b" />
+              <span className="students-hero-orbit-center">
+                <GraduationCap size={28} strokeWidth={1.85} />
+              </span>
+            </div>
+          </div>
         </div>
+      </header>
+
+      <div className="students-page-header">
+        {isAdmin && (
+          <div className="students-page-title-row students-page-title-row--faculty-toolbar">
+            <Link to="/students/new" className="btn btn-primary">
+              <Plus size={18} /> Add Student
+            </Link>
+          </div>
+        )}
         <div className="students-search-row">
           <div className="search-box" style={{ flex: 1 }}>
             <Search size={18} />
@@ -149,7 +179,7 @@ export default function Students() {
         </div>
       </div>
 
-      <div className="student-list">
+      <div className="student-list" role="region" aria-labelledby="students-hero-title">
         {filtered.map(student => {
           const course = courses.find(c => c.courseID === student.courseID)
           return (
@@ -183,38 +213,6 @@ export default function Students() {
         </div>
       )}
 
-      {isAdmin && (
-        <StudentFormModal
-          open={modal}
-          onClose={() => setModal(false)}
-          courses={courses}
-          departments={departments}
-          onSave={async s => {
-            setModal(false)
-            setPendingSave(s)
-            setConfirm({ open: true })
-          }}
-        />
-      )}
-
-      <ConfirmModal
-        open={confirm.open}
-        title="Add Student"
-        message="Are you sure you want to add this student?"
-        onConfirm={async () => {
-          setConfirm({ open: false })
-          try {
-            await crud.students.create(pendingSave)
-          } catch (err) {
-            showToast(err?.message || 'Failed to create student.', 'error')
-          }
-          setPendingSave(null)
-        }}
-        onCancel={() => {
-          setConfirm({ open: false })
-          setModal(true)
-        }}
-      />
     </div>
   )
 }

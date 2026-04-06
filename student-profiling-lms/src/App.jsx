@@ -3,6 +3,8 @@ import Layout from './components/Layout'
 import RequireAuth from './components/RequireAuth'
 import Dashboard from './pages/Dashboard'
 import Students from './pages/Students'
+import StudentAdd from './pages/StudentAdd'
+import StudentEdit from './pages/StudentEdit'
 import StudentProfile from './pages/StudentProfile'
 import Courses from './pages/Courses'
 import Faculty from './pages/Faculty'
@@ -26,6 +28,22 @@ export default function App() {
       >
         <Route index element={<Dashboard />} />
         <Route path="students" element={<Students />} />
+        <Route
+          path="students/new"
+          element={
+            <RequireAdmin>
+              <StudentAdd />
+            </RequireAdmin>
+          }
+        />
+        <Route
+          path="students/:id/edit"
+          element={
+            <RequireAdmin>
+              <StudentEdit />
+            </RequireAdmin>
+          }
+        />
         <Route path="students/:id" element={<StudentProfile />} />
         <Route path="courses" element={<Courses />} />
         <Route path="faculty" element={<Faculty />} />

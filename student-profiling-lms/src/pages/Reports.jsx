@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Trophy, Code, Award, ChevronDown, Users, Search, GraduationCap, AlertTriangle, Briefcase, Star, Shield } from 'lucide-react'
+import { Trophy, Code, Award, ChevronDown, Users, Search, GraduationCap, AlertTriangle, Briefcase, Star, Shield, FileBarChart, Sparkles } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useData } from '../context/DataContext'
 import { apiFetch } from '../lib/api'
@@ -57,7 +57,7 @@ const reportTemplates = [
 
 export default function Reports() {
   const { token } = useAuth()
-  const { courses } = useData()
+  const { courses, students } = useData()
 
   const getCourseCode = (courseID) => courses.find(c => c.courseID === courseID)?.courseCode || '—'
 
@@ -141,15 +141,47 @@ export default function Reports() {
 
   return (
     <div className="page">
-      <div className="page-header">
-        <h2>Reports & Queries</h2>
-      </div>
+      <header className="reports-hero" aria-labelledby="reports-hero-title">
+        <div className="reports-hero-glow" aria-hidden="true" />
+        <div className="reports-hero-grid" aria-hidden="true" />
+        <div className="reports-hero-inner">
+          <div className="reports-hero-copy">
+            <div className="reports-hero-badge">
+              <span className="reports-hero-badge-icon">
+                <FileBarChart size={18} strokeWidth={2.25} aria-hidden />
+              </span>
+              <span className="reports-hero-badge-text">CCS · Analytics</span>
+            </div>
+            <h2 id="reports-hero-title" className="reports-hero-title">
+              Reports & queries
+            </h2>
+            <p className="reports-hero-sub">
+              Preset reports and a custom query builder across the student directory — skills, honors, activities, affiliations, and conduct. Results link to full profiles.
+            </p>
+            <ul className="reports-hero-tags">
+              <li><Sparkles size={12} strokeWidth={2} aria-hidden /> {reportTemplates.length} report types</li>
+              <li><Users size={12} strokeWidth={2} aria-hidden /> {students.length} students</li>
+              <li><Search size={12} strokeWidth={2} aria-hidden /> Custom filters</li>
+            </ul>
+          </div>
+          <div className="reports-hero-visual" aria-hidden="true">
+            <div className="reports-hero-orbit">
+              <span className="reports-hero-orbit-ring" />
+              <span className="reports-hero-orbit-dot reports-hero-orbit-dot--a" />
+              <span className="reports-hero-orbit-dot reports-hero-orbit-dot--b" />
+              <span className="reports-hero-orbit-center">
+                <FileBarChart size={28} strokeWidth={1.85} />
+              </span>
+            </div>
+          </div>
+        </div>
+      </header>
 
       {/* Custom Query */}
       <div className="report-card open" style={{ marginBottom: '1.5rem' }}>
         <div className="report-card-header" style={{ cursor: 'default' }}>
-          <div className="report-icon" style={{ background: '#ede9fe', color: '#7c3aed' }}>
-            <Search size={22} />
+          <div className="report-icon">
+            <Search size={22} strokeWidth={2} />
           </div>
           <div className="report-info">
             <h3>Custom Query</h3>
@@ -160,27 +192,45 @@ export default function Reports() {
           <form onSubmit={handleCustomQuery}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem', marginBottom: '0.75rem' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: 4, color: '#4b5563' }}>Skill</label>
-                <input type="text" placeholder="e.g. Basketball, Python" value={customSkill}
+                <label className="reports-query-label">Skill</label>
+                <input
+                  type="text"
+                  className="reports-query-input"
+                  placeholder="e.g. Basketball, Python"
+                  value={customSkill}
                   onChange={e => setCustomSkill(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: '0.9rem' }} />
+                />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: 4, color: '#4b5563' }}>Activity</label>
-                <input type="text" placeholder="e.g. Debate, Sports Tournament" value={customActivity}
+                <label className="reports-query-label">Activity</label>
+                <input
+                  type="text"
+                  className="reports-query-input"
+                  placeholder="e.g. Debate, Sports Tournament"
+                  value={customActivity}
                   onChange={e => setCustomActivity(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: '0.9rem' }} />
+                />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: 4, color: '#4b5563' }}>Max GPA (PH scale, e.g. 1.75)</label>
-                <input type="number" step="0.01" min="1" max="5" placeholder="e.g. 1.75" value={customGpa}
+                <label className="reports-query-label">Max GPA (PH scale, e.g. 1.75)</label>
+                <input
+                  type="number"
+                  className="reports-query-input"
+                  step="0.01"
+                  min="1"
+                  max="5"
+                  placeholder="e.g. 1.75"
+                  value={customGpa}
                   onChange={e => setCustomGpa(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: '0.9rem' }} />
+                />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: 4, color: '#4b5563' }}>Year Level</label>
-                <select value={customYear} onChange={e => setCustomYear(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: '0.9rem' }}>
+                <label className="reports-query-label">Year Level</label>
+                <select
+                  className="reports-query-input"
+                  value={customYear}
+                  onChange={e => setCustomYear(e.target.value)}
+                >
                   <option value="">All Years</option>
                   {[1,2,3,4,5,6].map(y => <option key={y} value={y}>{y}{['st','nd','rd','th','th','th'][y-1]} Year</option>)}
                 </select>

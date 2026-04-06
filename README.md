@@ -41,7 +41,7 @@ If you prefer to run the components manually, follow these instructions:
 ## Admin Login Credentials
 Use these details to log in to the dashboard:
 
-- **Email**: `b`
+- **Email**: `mis.admin@school.edu`
 - **Password**: `admin123`
 
 ---

@@ -4,8 +4,11 @@ import { BrowserRouter } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { DataProvider } from './context/DataContext'
 import { ToastProvider } from './context/ToastContext'
+import { initThemeFromStorage } from './lib/theme'
 import App from './App'
 import './index.css'
+
+initThemeFromStorage()
 
 ReactDOM.createRoot(document.getElementById('app')).render(
   <React.StrictMode>

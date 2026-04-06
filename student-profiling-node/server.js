@@ -10,7 +10,8 @@ const SECRET_KEY = 'secret-key';
 const DB_FILE = path.join(__dirname, 'database.json');
 
 app.use(cors());
-app.use(express.json());
+/* Default json limit is 100kb — base64 photos (students/faculty) exceed that and the body is rejected. */
+app.use(express.json({ limit: '15mb' }));
 
 // Load database helper
 const getDb = () => JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
