@@ -163,7 +163,7 @@ app.delete('/api/students/:studentId/:collection/:id', authenticate, (req, res) 
 app.get('/api/students', authenticate, (req, res) => {
     const db = getDb();
     let studs = [...db.students];
-    const { search, section, courseID, skill, studentType } = req.query;
+    const { search, section, courseID, skill, include } = req.query;
 
     if (search) {
         const sq = search.toLowerCase();
@@ -188,7 +188,15 @@ app.get('/api/students', authenticate, (req, res) => {
         studs = studs.filter(s => studentIdsWithSkill.has(s.studentID));
     }
 
-    return res.json(studs.sort((a, b) => a.lastName.localeCompare(b.lastName)).map(omitPassword));
+    if (include === 'true') {
+        studs = studs.map(s => ({
+            ...s,
+            skills: db.skills.filter(sk => sk.studentID === s.studentID),
+            violations: db.violations.filter(v => v.studentID === s.studentID),
+        }));
+    }
+
+    return res.json(studs.sort((a,b) => a.lastName.localeCompare(b.lastName)));
 });
 
 app.get('/api/students/:id', authenticate, (req, res) => {

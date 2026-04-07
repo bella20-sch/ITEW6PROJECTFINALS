@@ -494,10 +494,10 @@
     },
     {
       "skillID": 5,
-      "studentID": 6,
-      "category": "Music",
-      "skillName": "Pitch Perfect",
-      "description": "Sound"
+      "studentID": 2,
+      "category": "Science",
+      "skillName": "wa",
+      "description": "SAs"
     }
   ],
   "affiliations": [
