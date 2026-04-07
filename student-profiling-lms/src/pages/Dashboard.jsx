@@ -82,7 +82,7 @@ export default function Dashboard() {
     const pendingViolations  = allViolations.filter(v => v.status === 'Pending').length
     const resolvedViolations = allViolations.filter(v => v.status === 'Resolved').length
     const recentViolations   = [...allViolations]
-      .sort((a, b) => new Date(b.violationDate || b.created_at || 0) - new Date(a.violationDate || a.created_at || 0))
+      .sort((a, b) => new Date(b.violationDate || b.dateReported || b.created_at || 0) - new Date(a.violationDate || a.dateReported || a.created_at || 0))
       .slice(0, 3)
 
     return { enrolled, dropped, graduated, male, female, byCourse, byYear, byStatus, recent,
@@ -186,13 +186,11 @@ export default function Dashboard() {
       <div className="dash-widgets" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
         <div className="dash-widget">
           <h3><Sparkles size={15} /> Top Skills</h3>
-          {!s.hasProfiles
-            ? <p className="muted">Load student profiles to see full stats</p>
-            : s.topSkills.length > 0
-              ? s.topSkills.map(sk => (
-                  <MiniBar key={sk.name} label={sk.name} value={sk.count} max={s.topSkills[0].count} color="#8b5cf6" />
-                ))
-              : <p className="muted">No skills recorded</p>
+          {s.topSkills.length > 0
+            ? s.topSkills.map(sk => (
+                <MiniBar key={sk.name} label={sk.name} value={sk.count} max={s.topSkills[0].count} color="#8b5cf6" />
+              ))
+            : <p className="muted">No skills recorded</p>
           }
         </div>
 
@@ -211,9 +209,7 @@ export default function Dashboard() {
           <h3>Violations Summary</h3>
           {s.allViolations.length > 0 && <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{s.allViolations.length} total</span>}
         </div>
-        {!s.hasProfiles ? (
-          <p className="muted" style={{ padding: '1rem 1.25rem' }}>Load student profiles to see full stats</p>
-        ) : s.allViolations.length === 0 ? (
+        {s.allViolations.length === 0 ? (
           <p className="muted" style={{ padding: '1rem 1.25rem' }}>No violations recorded</p>
         ) : (
           <>
@@ -222,12 +218,13 @@ export default function Dashboard() {
               <MiniBar label="Resolved" value={s.resolvedViolations} max={Math.max(s.pendingViolations, s.resolvedViolations, 1)} color="#10b981" />
             </div>
             {s.recentViolations.map((v, i) => {
+              const severity = v.severity || v.severityLevel || 'Minor'
               const severityStyle =
-                v.severity === 'Critical' ? { background: '#fce7f3', color: '#be185d' } :
-                v.severity === 'Major'    ? { background: '#fee2e2', color: '#dc2626' } :
-                                            { background: '#fef3c7', color: '#d97706' }
-              const dateStr = v.violationDate
-                ? new Date(v.violationDate).toLocaleDateString()
+                severity === 'Critical' ? { background: '#fce7f3', color: '#be185d' } :
+                severity === 'Major'    ? { background: '#fee2e2', color: '#dc2626' } :
+                                          { background: '#fef3c7', color: '#d97706' }
+              const dateStr = v.violationDate || v.dateReported
+                ? new Date(v.violationDate || v.dateReported).toLocaleDateString()
                 : v.created_at
                   ? new Date(v.created_at).toLocaleDateString()
                   : '—'
@@ -238,7 +235,7 @@ export default function Dashboard() {
                     <div className="dash-recent-meta">{v.violationType || v.type || 'Violation'} · {dateStr}</div>
                   </div>
                   <span style={{ ...severityStyle, fontSize: '0.7rem', fontWeight: 600, padding: '2px 8px', borderRadius: 999, flexShrink: 0 }}>
-                    {v.severity || 'Minor'}
+                    {severity}
                   </span>
                 </Link>
               )

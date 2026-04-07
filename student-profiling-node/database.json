@@ -339,6 +339,13 @@
       "skillName": "C++",
       "category": "Programming",
       "description": "Competitive programming"
+    },
+    {
+      "skillID": 5,
+      "studentID": 2,
+      "category": "Science",
+      "skillName": "wa",
+      "description": "SAs"
     }
   ],
   "affiliations": [

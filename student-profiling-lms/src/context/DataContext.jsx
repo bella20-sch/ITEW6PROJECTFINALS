@@ -29,13 +29,20 @@ export function DataProvider({ children }) {
           apiFetch('/api/meta/departments', { token }),
           apiFetch('/api/meta/courses', { token }),
           apiFetch('/api/meta/faculty', { token }),
-          apiFetch('/api/students', { token }),
+          apiFetch('/api/students?include=true', { token }),
         ])
         if (cancelled) return
         setDepartments(Array.isArray(deps) ? deps : [])
         setCourses(Array.isArray(crs) ? crs : [])
         setFaculty(Array.isArray(fac) ? fac : [])
         setStudents(Array.isArray(studs) ? studs : [])
+        
+        if (Array.isArray(studs)) {
+          const profMap = {}
+          studs.forEach(s => { profMap[s.studentID] = s })
+          setProfiles(profMap)
+        }
+
         setReady(true)
       } catch { if (!cancelled) setReady(false) }
     }
