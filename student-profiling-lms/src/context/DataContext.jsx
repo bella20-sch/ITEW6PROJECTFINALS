@@ -16,35 +16,26 @@ export function DataProvider({ children }) {
   const [students, setStudents] = useState([])
   const [profiles, setProfiles] = useState({})
 
-  useEffect(() => {
-    let cancelled = false
-    async function load() {
-      if (!isAuthenticated || !token) {
-        setReady(false); setDepartments([]); setCourses([])
-        setFaculty([]); setStudents([]); setProfiles({})
-        return
-      }
-      try {
-        const [deps, crs, fac, studs] = await Promise.all([
-          apiFetch('/api/meta/departments', { token }),
-          apiFetch('/api/meta/courses', { token }),
-          apiFetch('/api/meta/faculty', { token }),
-          apiFetch('/api/students?include=true', { token }),
-        ])
-        if (cancelled) return
-        setDepartments(Array.isArray(deps) ? deps : [])
-        setCourses(Array.isArray(crs) ? crs : [])
-        setFaculty(Array.isArray(fac) ? fac : [])
-        setStudents(Array.isArray(studs) ? studs : [])
-        
-        if (Array.isArray(studs)) {
-          const profMap = {}
-          studs.forEach(s => { profMap[s.studentID] = s })
-          setProfiles(profMap)
-        }
-
-        setReady(true)
-      } catch { if (!cancelled) setReady(false) }
+  const reloadDirectory = useCallback(async () => {
+    if (!isAuthenticated || !token) {
+      setReady(false)
+      setDepartments([]); setCourses([]); setFaculty([]); setStudents([]); setProfiles({})
+      return
+    }
+    try {
+      const [deps, crs, fac, studs] = await Promise.all([
+        apiFetch('/api/meta/departments', { token }),
+        apiFetch('/api/meta/courses', { token }),
+        apiFetch('/api/meta/faculty', { token }),
+        apiFetch('/api/students', { token }),
+      ])
+      setDepartments(Array.isArray(deps) ? deps : [])
+      setCourses(Array.isArray(crs) ? crs : [])
+      setFaculty(Array.isArray(fac) ? fac : [])
+      setStudents(Array.isArray(studs) ? studs : [])
+      setReady(true)
+    } catch {
+      setReady(false)
     }
   }, [isAuthenticated, token])
 
