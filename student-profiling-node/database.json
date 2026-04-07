@@ -344,6 +344,36 @@
       "academicStanding": "Dean's Lister",
       "totalUnits": "24",
       "completedUnits": "24"
+    },
+    {
+      "academicID": 5,
+      "studentID": 6,
+      "schoolYear": "2025-2026",
+      "semester": "2nd",
+      "gpa": "1.00",
+      "academicStanding": "President's List",
+      "totalUnits": "24",
+      "completedUnits": "24"
+    },
+    {
+      "academicID": 6,
+      "studentID": 6,
+      "schoolYear": "1999-2000",
+      "semester": "Summer",
+      "gpa": "1.23",
+      "academicStanding": "VPAA's List",
+      "totalUnits": "23",
+      "completedUnits": "23"
+    },
+    {
+      "academicID": 7,
+      "studentID": 6,
+      "schoolYear": "2012-2013",
+      "semester": "1st",
+      "gpa": "1.23",
+      "academicStanding": "Dean's Lister",
+      "totalUnits": "23",
+      "completedUnits": "23"
     }
   ],
   "activities": [
@@ -360,6 +390,14 @@
       "activityName": "Intramurals 2024",
       "date": "2024-10-10",
       "description": "Participated in the Basketball Tournament"
+    },
+    {
+      "activityID": 3,
+      "studentID": 6,
+      "activityType": "Club Activity",
+      "activityName": "Exhibit",
+      "date": "2026-04-01",
+      "description": "Tour"
     }
   ],
   "medical": [
@@ -382,6 +420,14 @@
       "emergencyContactRelationship": "Mother",
       "emergencyContactNumber": "9111111112",
       "emergencyContactAddress": "456 Oak Ave, QC"
+    },
+    {
+      "medicalID": 3,
+      "studentID": 6,
+      "bloodType": "A+",
+      "emergencyContactName": "Benedicta A. Bella",
+      "emergencyContactRelationship": "Grandmother",
+      "emergencyContactNumber": "09667757357"
     }
   ],
   "guardians": [
@@ -404,6 +450,17 @@
       "email": "maria.rodriguez@email.com",
       "occupation": "Teacher",
       "address": "456 Oak Ave, QC"
+    },
+    {
+      "guardianID": 3,
+      "studentID": 6,
+      "guardianName": "Benedicta A. Bella",
+      "relationship": "Grandmother",
+      "contactNumber": "+639667757357",
+      "email": "bellamourine20@gmail.com",
+      "streetAddress": "#16",
+      "municipality": "Cabuyao",
+      "occupation": "Unemployed"
     }
   ],
   "skills": [
@@ -434,6 +491,13 @@
       "skillName": "C++",
       "category": "Programming",
       "description": "Competitive programming"
+    },
+    {
+      "skillID": 5,
+      "studentID": 6,
+      "category": "Music",
+      "skillName": "Pitch Perfect",
+      "description": "Sound"
     }
   ],
   "affiliations": [
@@ -475,6 +539,15 @@
       "dateJoined": "0213-02-11",
       "status": "Active",
       "adviserName": "21"
+    },
+    {
+      "affiliationID": 5,
+      "studentID": 6,
+      "organizationName": "Ministry of Magic",
+      "position": "Auror",
+      "dateJoined": "2011-08-12",
+      "status": "Active",
+      "adviserName": "Nicole"
     }
   ],
   "violations": [

@@ -3,7 +3,7 @@ import { X } from 'lucide-react'
 
 const EXIT_MS = 220
 
-export default function Modal({ title, open, onClose, children, closeOnOverlayClick = true }) {
+export default function Modal({ title, open, onClose, children, closeOnOverlayClick = true, modalClassName = '' }) {
   const titleId = useId()
   const mouseDownTarget = useRef(null)
   const exitTimer = useRef(null)
@@ -53,7 +53,7 @@ export default function Modal({ title, open, onClose, children, closeOnOverlayCl
       }}
     >
       <div
-        className={`modal${exiting ? ' modal--exiting' : ''}`}
+        className={`modal${modalClassName ? ` ${modalClassName}` : ''}${exiting ? ' modal--exiting' : ''}`}
         onMouseDown={e => e.stopPropagation()}
       >
         <div className="modal-header">

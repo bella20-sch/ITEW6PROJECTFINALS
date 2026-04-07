@@ -47,7 +47,7 @@ function academicStandingTone(standing) {
 function ConfirmModal({ open, title, message, onConfirm, onCancel, danger }) {
   return (
     <Modal title={title || 'Confirm'} open={open} onClose={onCancel} closeOnOverlayClick={false}>
-      <p style={{ marginBottom: '1.5rem', color: '#374151' }}>{message}</p>
+      <p className="confirm-modal-message">{message}</p>
       <div className="form-actions">
         <button className="btn btn-outline" onClick={onCancel}>Cancel</button>
         <button className={`btn ${danger ? 'btn-danger' : 'btn-primary'}`} onClick={onConfirm}>
