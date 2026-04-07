@@ -5,5 +5,12 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 3000,
-  }
+    // Send /api/* to Express so dev never hits Vite with POST /api/... (avoids "Cannot POST /api/...")
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+      },
+    },
+  },
 })

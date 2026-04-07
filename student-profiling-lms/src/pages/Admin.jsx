@@ -1,4 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
+import {
+  Shield,
+  Users,
+  UserCircle,
+  KeyRound,
+  GraduationCap,
+  Building2,
+  Sparkles,
+  CheckCircle2,
+  AlertCircle,
+  Layers,
+} from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { apiFetch } from '../lib/api'
 import { useData } from '../context/DataContext'
@@ -13,6 +25,7 @@ const defaultStudent = {
   adviserFacultyID: '',
   courseID: '',
   section: '',
+  studentType: 'Regular',
 }
 
 const defaultFaculty = {
@@ -28,7 +41,7 @@ const defaultFaculty = {
 
 export default function Admin() {
   const { token } = useAuth()
-  const { departments, courses, faculty } = useData()
+  const { departments, courses, faculty, students, reloadDirectory } = useData()
 
   const [mode, setMode] = useState('student')
   const [form, setForm] = useState(defaultStudent)
@@ -41,7 +54,6 @@ export default function Admin() {
     if (mode === 'student' && !faculty.length) return
 
     setForm((prev) => {
-      // Don't clobber user typing; only fill blanks.
       if (mode === 'faculty') {
         return {
           ...prev,
@@ -56,6 +68,7 @@ export default function Admin() {
         departmentID: prev.departmentID || departments[0]?.departmentID || '',
         courseID: prev.courseID || courses[0]?.courseID || '',
         adviserFacultyID: prev.adviserFacultyID || faculty[0]?.facultyID || '',
+        studentType: prev.studentType || 'Regular',
       }
     })
   }, [departments, courses, faculty, mode])
@@ -66,6 +79,15 @@ export default function Admin() {
     if (mode === 'faculty') return !!form.departmentID && !!form.courseID && !!form.section
     return !!form.departmentID && !!form.courseID && !!form.section && !!form.adviserFacultyID
   }, [form, mode])
+
+  const stats = useMemo(
+    () => [
+      { label: 'Students', value: students.length, icon: Users },
+      { label: 'Faculty', value: faculty.length, icon: UserCircle },
+      { label: 'Programs', value: courses.length, icon: GraduationCap },
+    ],
+    [students.length, faculty.length, courses.length],
+  )
 
   const resetForm = (nextMode) => {
     setMode(nextMode)
@@ -84,6 +106,7 @@ export default function Admin() {
         courseID: courses[0]?.courseID || '',
         adviserFacultyID: faculty[0]?.facultyID || '',
         section: '',
+        studentType: 'Regular',
       })
     }
   }
@@ -105,10 +128,14 @@ export default function Admin() {
 
       payload.courseID = Number(form.courseID)
       payload.section = form.section.trim()
-      if (mode === 'student') payload.adviserFacultyID = Number(form.adviserFacultyID)
+      if (mode === 'student') {
+        payload.adviserFacultyID = Number(form.adviserFacultyID)
+        payload.studentType = form.studentType || 'Regular'
+      }
 
       const endpoint = mode === 'student' ? '/api/admin/students' : '/api/admin/faculty'
-      const created = await apiFetch(endpoint, { token, method: 'POST', body: payload })
+      await apiFetch(endpoint, { token, method: 'POST', body: payload })
+      await reloadDirectory()
       setSuccess(`${mode === 'student' ? 'Student' : 'Faculty'} account created.`)
       resetForm(mode)
     } catch (err) {
@@ -119,74 +146,212 @@ export default function Admin() {
   }
 
   return (
-    <div className="page">
-      <div className="page-header">
-        <h2>MIS/Admin</h2>
-        <p className="page-description">Create login accounts and assign them as Student or Faculty.</p>
-      </div>
+    <div className="page admin-page admin-page--deck">
+      <header className="admin-hero" aria-labelledby="admin-hero-title">
+        <div className="admin-hero-glow" aria-hidden="true" />
+        <div className="admin-hero-grid" aria-hidden="true" />
+        <div className="admin-hero-inner">
+          <div className="admin-hero-copy">
+            <div className="admin-hero-badge">
+              <span className="admin-hero-badge-icon">
+                <Shield size={18} strokeWidth={2.25} aria-hidden />
+              </span>
+              <span className="admin-hero-badge-text">MIS · Access control</span>
+            </div>
+            <h2 id="admin-hero-title" className="admin-hero-title">
+              Account provisioning
+            </h2>
+            <p className="admin-hero-sub">
+              Create login accounts and assign them as student or faculty — aligned with departments, programs, and advising.
+            </p>
+            <ul className="admin-hero-tags">
+              <li><Sparkles size={12} strokeWidth={2} aria-hidden /> Role-based LMS access</li>
+              <li><Building2 size={12} strokeWidth={2} aria-hidden /> {departments.length} departments</li>
+              <li><Users size={12} strokeWidth={2} aria-hidden /> {students.length} students</li>
+            </ul>
+          </div>
+          <div className="admin-hero-visual" aria-hidden="true">
+            <div className="admin-hero-orbit">
+              <span className="admin-hero-orbit-ring" />
+              <span className="admin-hero-orbit-dot admin-hero-orbit-dot--a" />
+              <span className="admin-hero-orbit-dot admin-hero-orbit-dot--b" />
+              <span className="admin-hero-orbit-center">
+                <Shield size={28} strokeWidth={1.85} />
+              </span>
+            </div>
+          </div>
+        </div>
+      </header>
 
-      <div className="card" style={{ maxWidth: 820 }}>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-          <button className={`btn ${mode === 'student' ? 'btn-primary' : 'btn-outline'}`} type="button" onClick={() => resetForm('student')}>
-            Create Student
-          </button>
-          <button className={`btn ${mode === 'faculty' ? 'btn-primary' : 'btn-outline'}`} type="button" onClick={() => resetForm('faculty')}>
-            Create Faculty
-          </button>
+      <div className="admin-deck">
+        <div className="admin-deck-canvas">
+          <section className="admin-panel admin-panel--canvas">
+            <div className="admin-panel-top">
+              <div className="admin-panel-head">
+                <h3 className="admin-panel-title">New account</h3>
+                <p className="admin-panel-desc">
+                  Fields expand to <strong>four columns</strong> on large displays — use your full monitor width.
+                </p>
+              </div>
+              <div className="admin-mode-switch" role="tablist" aria-label="Account type">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={mode === 'student'}
+                  className="admin-mode-btn"
+                  onClick={() => resetForm('student')}
+                >
+                  <Users size={18} strokeWidth={2} aria-hidden />
+                  Student
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={mode === 'faculty'}
+                  className="admin-mode-btn"
+                  onClick={() => resetForm('faculty')}
+                >
+                  <UserCircle size={18} strokeWidth={2} aria-hidden />
+                  Faculty
+                </button>
+              </div>
+            </div>
+
+            {error && (
+              <div className="admin-alert admin-alert--error" role="alert">
+                <AlertCircle size={18} aria-hidden />
+                <span>{error}</span>
+              </div>
+            )}
+            {success && (
+              <div className="admin-alert admin-alert--success" role="status">
+                <CheckCircle2 size={18} aria-hidden />
+                <span>{success}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="form admin-form admin-form--deck">
+              <section className="admin-form-section" aria-labelledby="admin-section-identity">
+                <h4 id="admin-section-identity" className="admin-form-section-title">
+                  <Users size={18} aria-hidden />
+                  Identity
+                </h4>
+                <div className="admin-form-grid admin-form-grid--identity">
+                  <div className="admin-form-cell">
+                    <label htmlFor="admin-first">First name</label>
+                    <input id="admin-first" value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} required autoComplete="off" />
+                  </div>
+                  <div className="admin-form-cell">
+                    <label htmlFor="admin-last">Last name</label>
+                    <input id="admin-last" value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} required autoComplete="off" />
+                  </div>
+                </div>
+              </section>
+
+              <section className="admin-form-section" aria-labelledby="admin-section-access">
+                <h4 id="admin-section-access" className="admin-form-section-title">
+                  <KeyRound size={18} aria-hidden />
+                  Sign-in credentials
+                </h4>
+                <div className="admin-form-grid admin-form-grid--credentials">
+                  <div className="admin-form-cell admin-form-cell--email">
+                    <label htmlFor="admin-email">Institutional email</label>
+                    <input id="admin-email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required autoComplete="off" />
+                  </div>
+                  <div className="admin-form-cell">
+                    <label htmlFor="admin-pass">Temporary password</label>
+                    <input id="admin-pass" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required minLength={6} autoComplete="new-password" />
+                  </div>
+                  <p className="admin-field-hint admin-form-cell admin-form-cell--full">Minimum 6 characters. Share the password outside the LMS through a secure channel.</p>
+                </div>
+              </section>
+
+              <section className="admin-form-section" aria-labelledby="admin-section-academic">
+                <h4 id="admin-section-academic" className="admin-form-section-title">
+                  <GraduationCap size={18} aria-hidden />
+                  Academic assignment
+                </h4>
+                <div className="admin-form-grid admin-form-grid--academic">
+                  <div className="admin-form-cell">
+                    <label htmlFor="admin-dept">Department</label>
+                    <select id="admin-dept" value={form.departmentID} onChange={(e) => setForm({ ...form, departmentID: e.target.value })} required>
+                      {departments.map(d => <option key={d.departmentID} value={d.departmentID}>{d.departmentName}</option>)}
+                    </select>
+                  </div>
+                  <div className="admin-form-cell">
+                    <label htmlFor="admin-course">Course</label>
+                    <select id="admin-course" value={form.courseID} onChange={(e) => setForm({ ...form, courseID: e.target.value })} required>
+                      {courses.map(c => <option key={c.courseID} value={c.courseID}>{c.courseCode} — {c.courseName}</option>)}
+                    </select>
+                  </div>
+                  <div className="admin-form-cell">
+                    <label htmlFor="admin-class-section">Section</label>
+                    <input id="admin-class-section" value={form.section} onChange={(e) => setForm({ ...form, section: e.target.value })} placeholder="e.g. 3A · STEM-A" required />
+                  </div>
+                  {mode === 'student' ? (
+                    <>
+                      <div className="admin-form-cell">
+                        <label htmlFor="admin-adviser">Faculty adviser</label>
+                        <select id="admin-adviser" value={form.adviserFacultyID} onChange={(e) => setForm({ ...form, adviserFacultyID: e.target.value })} required>
+                          {faculty.map(f => <option key={f.facultyID} value={f.facultyID}>{f.firstName} {f.lastName}</option>)}
+                        </select>
+                      </div>
+                      <div className="admin-form-cell">
+                        <label htmlFor="admin-student-type">Student type</label>
+                        <select id="admin-student-type" value={form.studentType} onChange={(e) => setForm({ ...form, studentType: e.target.value })} required>
+                          <option value="Regular">Regular</option>
+                          <option value="Irregular">Irregular</option>
+                          <option value="Transferee">Transferee</option>
+                        </select>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="admin-form-cell admin-form-cell--filler" aria-hidden="true">
+                      <div className="admin-filler">
+                        <UserCircle size={28} strokeWidth={1.5} aria-hidden />
+                        <span>Faculty accounts skip adviser linkage.</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              <div className="admin-form-actions form-actions">
+                <button type="button" className="btn btn-outline" onClick={() => resetForm(mode)} disabled={busy}>
+                  Reset form
+                </button>
+                <button type="submit" className="btn btn-primary admin-submit-btn" disabled={!canSubmit || busy}>
+                  {busy ? 'Creating…' : `Create ${mode === 'student' ? 'student' : 'faculty'} account`}
+                </button>
+              </div>
+            </form>
+          </section>
         </div>
 
-        {error && <div className="auth-alert" style={{ marginBottom: 12 }}>{error}</div>}
-        {success && <div className="auth-alert" style={{ marginBottom: 12, borderColor: 'rgba(34,197,94,.35)', background: 'rgba(34,197,94,.10)' }}>{success}</div>}
-
-        <form onSubmit={handleSubmit} className="form">
-          <div className="form-row">
-            <div>
-              <label>First Name</label>
-              <input value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} required />
-            </div>
-            <div>
-              <label>Last Name</label>
-              <input value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} required />
-            </div>
+        <aside className="admin-deck-rail" aria-label="Reference">
+          <div className="admin-rail-snapshot" aria-label="Directory snapshot">
+            <h3 className="admin-rail-snapshot-title">Live counts</h3>
+            <ul className="admin-rail-snapshot-list">
+              {stats.map(({ label, value, icon: Icon }) => (
+                <li key={label} className="admin-rail-snapshot-row">
+                  <span className="admin-rail-snapshot-ico" aria-hidden><Icon size={17} strokeWidth={2} /></span>
+                  <span className="admin-rail-snapshot-lbl">{label}</span>
+                  <span className="admin-rail-snapshot-num">{value}</span>
+                </li>
+              ))}
+            </ul>
           </div>
-
-          <label>Email</label>
-          <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
-
-          <label>Temporary Password</label>
-          <input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
-
-          <label>Department</label>
-          <select value={form.departmentID} onChange={(e) => setForm({ ...form, departmentID: e.target.value })} required>
-            {departments.map(d => <option key={d.departmentID} value={d.departmentID}>{d.departmentName}</option>)}
-          </select>
-
-          <label>Course</label>
-          <select value={form.courseID} onChange={(e) => setForm({ ...form, courseID: e.target.value })} required>
-            {courses.map(c => <option key={c.courseID} value={c.courseID}>{c.courseCode} - {c.courseName}</option>)}
-          </select>
-
-          <label>Section</label>
-          <input value={form.section} onChange={(e) => setForm({ ...form, section: e.target.value })} placeholder="e.g. STEM-A" required />
-
-          {mode === 'student' && (
-            <>
-              <label>Faculty / Professor</label>
-              <select value={form.adviserFacultyID} onChange={(e) => setForm({ ...form, adviserFacultyID: e.target.value })} required>
-                {faculty.map(f => <option key={f.facultyID} value={f.facultyID}>{f.firstName} {f.lastName}</option>)}
-              </select>
-            </>
-          )}
-
-          <div className="form-actions">
-            <button type="button" className="btn btn-outline" onClick={() => resetForm(mode)} disabled={busy}>Reset</button>
-            <button type="submit" className="btn btn-primary" disabled={!canSubmit || busy}>
-              {busy ? 'Creating…' : 'Create Account'}
-            </button>
+          <div className="admin-rail-card">
+            <h3 className="admin-rail-title"><Layers size={16} aria-hidden /> Flow</h3>
+            <ol className="admin-rail-steps">
+              <li>Pick <strong>Student</strong> or <strong>Faculty</strong>.</li>
+              <li>Fill identity &amp; credentials across the wide grid.</li>
+              <li>Assign department, course, section{mode === 'student' ? ', adviser' : ''}.</li>
+              <li>Submit — user can sign in immediately.</li>
+            </ol>
           </div>
-        </form>
+        </aside>
       </div>
     </div>
   )
 }
-

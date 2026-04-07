@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useData } from '../context/DataContext'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
-import { BookOpen, Plus, Pencil, Trash2 } from 'lucide-react'
+import { BookOpen, Plus, Pencil, Trash2, Building2, Sparkles, Layers } from 'lucide-react'
 import Modal from '../components/Modal'
 import ConfirmModal from '../components/ConfirmModal'
 
@@ -71,17 +71,53 @@ export default function Courses() {
   }
 
   const courses = crud.courses.getAll()
+  const totalUnits = courses.reduce((sum, c) => sum + (Number(c.totalUnits) || 0), 0)
 
   return (
     <div className="page">
-      <div className="page-header page-header-row">
-        <h2>Courses</h2>
-        <div className="page-header-actions">
-          {isAdmin && <button className="btn btn-primary" onClick={openAdd}><Plus size={18} /> Add Course</button>}
+      <header className="courses-hero" aria-labelledby="courses-hero-title">
+        <div className="courses-hero-glow" aria-hidden="true" />
+        <div className="courses-hero-grid" aria-hidden="true" />
+        <div className="courses-hero-inner">
+          <div className="courses-hero-copy">
+            <div className="courses-hero-badge">
+              <span className="courses-hero-badge-icon">
+                <BookOpen size={18} strokeWidth={2.25} aria-hidden />
+              </span>
+              <span className="courses-hero-badge-text">CCS · Programs</span>
+            </div>
+            <h2 id="courses-hero-title" className="courses-hero-title">
+              Course catalog
+            </h2>
+            <p className="courses-hero-sub">
+              BSIT, BSCS, BSIS, and related offerings — codes, credit units, and owning departments. Administrators can extend or update the catalog.
+            </p>
+            <ul className="courses-hero-tags">
+              <li><Sparkles size={12} strokeWidth={2} aria-hidden /> {courses.length} courses</li>
+              <li><Building2 size={12} strokeWidth={2} aria-hidden /> {departments.length} departments</li>
+              <li><Layers size={12} strokeWidth={2} aria-hidden /> {totalUnits} total units</li>
+            </ul>
+          </div>
+          <div className="courses-hero-visual" aria-hidden="true">
+            <div className="courses-hero-orbit">
+              <span className="courses-hero-orbit-ring" />
+              <span className="courses-hero-orbit-dot courses-hero-orbit-dot--a" />
+              <span className="courses-hero-orbit-dot courses-hero-orbit-dot--b" />
+              <span className="courses-hero-orbit-center">
+                <BookOpen size={28} strokeWidth={1.85} />
+              </span>
+            </div>
+          </div>
         </div>
-      </div>
+      </header>
 
-      <div className="course-list">
+      {isAdmin && (
+        <div className="students-page-title-row students-page-title-row--faculty-toolbar" style={{ marginBottom: '1rem' }}>
+          <button type="button" className="btn btn-primary" onClick={openAdd}><Plus size={18} /> Add Course</button>
+        </div>
+      )}
+
+      <div className="course-list" role="region" aria-labelledby="courses-hero-title">
         {courses.map(c => {
           const depName = departments.find(d => d.departmentID === c.departmentID)?.departmentName || '-'
           return (

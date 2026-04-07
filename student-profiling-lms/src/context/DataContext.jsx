@@ -46,9 +46,11 @@ export function DataProvider({ children }) {
         setReady(true)
       } catch { if (!cancelled) setReady(false) }
     }
-    load()
-    return () => { cancelled = true }
   }, [isAuthenticated, token])
+
+  useEffect(() => {
+    reloadDirectory()
+  }, [reloadDirectory])
 
   const fetchStudentProfile = useCallback(async (studentID) => {
     const id = Number(studentID)
@@ -188,7 +190,7 @@ export function DataProvider({ children }) {
   }), [departments, courses, faculty, students, profiles, token, fetchStudentProfile, showToast])
 
   return (
-    <DataContext.Provider value={{ ready, departments, courses, faculty, students, crud, subCrud, profiles }}>
+    <DataContext.Provider value={{ ready, departments, courses, faculty, students, crud, subCrud, profiles, reloadDirectory }}>
       {children}
     </DataContext.Provider>
   )

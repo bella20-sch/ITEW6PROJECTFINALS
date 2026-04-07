@@ -1,9 +1,9 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  Users, FileBarChart, BookOpen, UserCircle,
+  Users, FileBarChart, BookOpen, UserCircle, LayoutDashboard, BarChart3,
   GraduationCap, TrendingUp, UserCheck, UserX, ChevronRight,
-  Sparkles, AlertTriangle,
+  Sparkles, AlertTriangle, Mars, Venus,
 } from 'lucide-react'
 import { useData } from '../context/DataContext'
 
@@ -90,95 +90,150 @@ export default function Dashboard() {
              allViolations, pendingViolations, resolvedViolations, recentViolations }
   }, [students, courses, profiles])
 
+  const enrolledPct = students.length > 0 ? Math.round((s.enrolled / students.length) * 100) : 0
+
   return (
     <div className="dashboard">
-      <section className="dashboard-hero">
-        <h2 className="dashboard-hero-title">College of Computer Studies</h2>
-        <p className="dashboard-hero-subtitle">
-          Student Profiling System — Pamantasan ng Cabuyao · BSIT · BSCS · BSIS
-        </p>
-      </section>
+      <header className="dashboard-masthead" aria-labelledby="dashboard-masthead-title">
+        <div className="dashboard-masthead-glow" aria-hidden="true" />
+        <div className="dashboard-masthead-grid" aria-hidden="true" />
+        <div className="dashboard-masthead-top">
+          <div className="dashboard-masthead-copy">
+            <div className="dashboard-masthead-badge">
+              <span className="dashboard-masthead-badge-icon">
+                <LayoutDashboard size={18} strokeWidth={2.25} aria-hidden />
+              </span>
+              <span className="dashboard-masthead-badge-text">CCS · Overview & analytics</span>
+            </div>
+            <h2 id="dashboard-masthead-title" className="dashboard-masthead-title">
+              College dashboard
+            </h2>
+            <p className="dashboard-masthead-sub">
+              Live snapshot of enrollment, programs, and faculty — Pamantasan ng Cabuyao student profiling (
+              <span className="dashboard-masthead-programs">BSIT · BSCS · BSIS</span>).
+            </p>
+            <ul className="dashboard-masthead-tags">
+              <li><Sparkles size={12} strokeWidth={2} aria-hidden /> {students.length} students</li>
+              <li><BookOpen size={12} strokeWidth={2} aria-hidden /> {courses.length} programs</li>
+              <li><UserCircle size={12} strokeWidth={2} aria-hidden /> {faculty.length} faculty</li>
+            </ul>
+          </div>
+          <div className="dashboard-masthead-visual" aria-hidden="true">
+            <div className="dashboard-masthead-orbit">
+              <span className="dashboard-masthead-orbit-ring" />
+              <span className="dashboard-masthead-orbit-dot dashboard-masthead-orbit-dot--a" />
+              <span className="dashboard-masthead-orbit-dot dashboard-masthead-orbit-dot--b" />
+              <span className="dashboard-masthead-orbit-dot dashboard-masthead-orbit-dot--c" />
+              <span className="dashboard-masthead-orbit-center">
+                <BarChart3 size={26} strokeWidth={1.85} />
+              </span>
+            </div>
+          </div>
+        </div>
 
-      {/* Stat cards */}
-      <section className="dashboard-stats">
-        <Link to="/students" className="stat-card stat-card-accent stat-card-link">
-          <div className="stat-icon"><Users size={22} /></div>
-          <div className="stat-content">
-            <span className="stat-value">{students.length}</span>
-            <span className="stat-label">Total Students</span>
-            <span className="stat-card-sub">{s.enrolled} enrolled</span>
+        <div className="dashboard-masthead-stats">
+          <Link to="/students" className="dash-stat-tile dash-stat-tile--link">
+            <span className="dash-stat-tile-icon"><Users size={20} strokeWidth={2} /></span>
+            <span className="dash-stat-tile-copy">
+              <span className="dash-stat-tile-value">{students.length}</span>
+              <span className="dash-stat-tile-label">Total students</span>
+              <span className="dash-stat-tile-hint">{s.enrolled} enrolled</span>
+            </span>
+          </Link>
+          <Link to="/courses" className="dash-stat-tile dash-stat-tile--link">
+            <span className="dash-stat-tile-icon"><BookOpen size={20} strokeWidth={2} /></span>
+            <span className="dash-stat-tile-copy">
+              <span className="dash-stat-tile-value">{courses.length}</span>
+              <span className="dash-stat-tile-label">Courses</span>
+            </span>
+          </Link>
+          <Link to="/faculty" className="dash-stat-tile dash-stat-tile--link">
+            <span className="dash-stat-tile-icon"><UserCircle size={20} strokeWidth={2} /></span>
+            <span className="dash-stat-tile-copy">
+              <span className="dash-stat-tile-value">{faculty.length}</span>
+              <span className="dash-stat-tile-label">Faculty</span>
+            </span>
+          </Link>
+          <div className="dash-stat-tile">
+            <span className="dash-stat-tile-icon"><UserCheck size={20} strokeWidth={2} /></span>
+            <span className="dash-stat-tile-copy">
+              <span className="dash-stat-tile-value">{s.enrolled}</span>
+              <span className="dash-stat-tile-label">Enrolled</span>
+              <span className="dash-stat-tile-hint">{enrolledPct}% of total</span>
+            </span>
           </div>
-        </Link>
-        <Link to="/courses" className="stat-card stat-card-teal stat-card-link">
-          <div className="stat-icon"><BookOpen size={22} /></div>
-          <div className="stat-content">
-            <span className="stat-value">{courses.length}</span>
-            <span className="stat-label">Courses</span>
+          <div className="dash-stat-tile">
+            <span className="dash-stat-tile-icon"><UserX size={20} strokeWidth={2} /></span>
+            <span className="dash-stat-tile-copy">
+              <span className="dash-stat-tile-value">{s.dropped}</span>
+              <span className="dash-stat-tile-label">Dropped</span>
+            </span>
           </div>
-        </Link>
-        <Link to="/faculty" className="stat-card stat-card-blue stat-card-link">
-          <div className="stat-icon"><UserCircle size={22} /></div>
-          <div className="stat-content">
-            <span className="stat-value">{faculty.length}</span>
-            <span className="stat-label">Faculty</span>
-          </div>
-        </Link>
-        <div className="stat-card stat-card-green">
-          <div className="stat-icon"><UserCheck size={22} /></div>
-          <div className="stat-content">
-            <span className="stat-value">{s.enrolled}</span>
-            <span className="stat-label">Enrolled</span>
-            <span className="stat-card-sub">
-              {students.length > 0 ? Math.round(s.enrolled / students.length * 100) : 0}% of total
+          <div className="dash-stat-tile">
+            <span className="dash-stat-tile-icon"><GraduationCap size={20} strokeWidth={2} /></span>
+            <span className="dash-stat-tile-copy">
+              <span className="dash-stat-tile-value">{s.graduated}</span>
+              <span className="dash-stat-tile-label">Graduated</span>
             </span>
           </div>
         </div>
-        <div className="stat-card stat-card-accent">
-          <div className="stat-icon"><UserX size={22} /></div>
-          <div className="stat-content">
-            <span className="stat-value">{s.dropped}</span>
-            <span className="stat-label">Dropped</span>
-          </div>
-        </div>
-        <div className="stat-card stat-card-teal">
-          <div className="stat-icon"><GraduationCap size={22} /></div>
-          <div className="stat-content">
-            <span className="stat-value">{s.graduated}</span>
-            <span className="stat-label">Graduated</span>
-          </div>
-        </div>
-      </section>
+      </header>
 
       {/* Widgets row */}
       <div className="dash-widgets">
-        <div className="dash-widget">
-          <h3><BookOpen size={15} /> Students by Course</h3>
-          {s.byCourse.map(c => (
-            <MiniBar key={c.code} label={c.code} value={c.count} max={students.length} color="#fb923c" />
-          ))}
-          {s.byCourse.every(c => c.count === 0) && <p className="muted">No data</p>}
+        <div className="dash-recent">
+          <div className="dash-recent-header">
+            <BookOpen size={16} strokeWidth={2} />
+            <h3>Students by Course</h3>
+          </div>
+          <div className="dash-chart-body">
+            {s.byCourse.map(c => (
+              <MiniBar key={c.code} label={c.code} value={c.count} max={students.length} color="#fb923c" />
+            ))}
+            {s.byCourse.every(c => c.count === 0) && <p className="muted dash-chart-empty">No data</p>}
+          </div>
         </div>
 
-        <div className="dash-widget">
-          <h3><TrendingUp size={15} /> Students by Year Level</h3>
-          {s.byYear.length > 0
-            ? s.byYear.map(y => <MiniBar key={y.label} label={y.label} value={y.count} max={students.length} color="#6366f1" />)
-            : <p className="muted">No data</p>
-          }
+        <div className="dash-recent">
+          <div className="dash-recent-header">
+            <TrendingUp size={16} strokeWidth={2} />
+            <h3>Students by Year Level</h3>
+          </div>
+          <div className="dash-chart-body">
+            {s.byYear.length > 0
+              ? s.byYear.map(y => <MiniBar key={y.label} label={y.label} value={y.count} max={students.length} color="#6366f1" />)
+              : <p className="muted dash-chart-empty">No data</p>
+            }
+          </div>
         </div>
 
-        <div className="dash-widget">
-          <h3><UserCheck size={15} /> Enrollment Status</h3>
-          {s.byStatus.length > 0
-            ? s.byStatus.map(x => <MiniBar key={x.label} label={x.label} value={x.count} max={students.length} color={x.color} />)
-            : <p className="muted">No data</p>
-          }
-          {students.length > 0 && (
-            <div className="dash-gender-row">
-              <span>♂ Male: <strong>{s.male}</strong></span>
-              <span>♀ Female: <strong>{s.female}</strong></span>
-            </div>
-          )}
+        <div className="dash-recent">
+          <div className="dash-recent-header">
+            <UserCheck size={16} strokeWidth={2} />
+            <h3>Enrollment Status</h3>
+          </div>
+          <div className="dash-chart-body">
+            {s.byStatus.length > 0
+              ? s.byStatus.map(x => <MiniBar key={x.label} label={x.label} value={x.count} max={students.length} color={x.color} />)
+              : <p className="muted dash-chart-empty">No data</p>
+            }
+            {students.length > 0 && (
+              <div className="dash-gender-row dash-gender-row--sectioned">
+                <span className="dash-gender-stat dash-gender-stat--male">
+                  <span className="dash-gender-icon-wrap" aria-hidden>
+                    <Mars size={20} strokeWidth={2.25} />
+                  </span>
+                  <span className="dash-gender-label">Male <strong>{s.male}</strong></span>
+                </span>
+                <span className="dash-gender-stat dash-gender-stat--female">
+                  <span className="dash-gender-icon-wrap" aria-hidden>
+                    <Venus size={20} strokeWidth={2.25} />
+                  </span>
+                  <span className="dash-gender-label">Female <strong>{s.female}</strong></span>
+                </span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -194,18 +249,23 @@ export default function Dashboard() {
           }
         </div>
 
-        <div className="dash-widget">
-          <h3><Users size={15} /> Student Type Breakdown</h3>
-          <MiniBar label="Regular"    value={s.regular}    max={s.maxType} color="#10b981" />
-          <MiniBar label="Irregular"  value={s.irregular}  max={s.maxType} color="#f59e0b" />
-          <MiniBar label="Transferee" value={s.transferee} max={s.maxType} color="#3b82f6" />
+        <div className="dash-recent">
+          <div className="dash-recent-header">
+            <Users size={16} strokeWidth={2} />
+            <h3>Student Type Breakdown</h3>
+          </div>
+          <div className="dash-chart-body">
+            <MiniBar label="Regular" value={s.regular} max={s.maxType} color="#10b981" />
+            <MiniBar label="Irregular" value={s.irregular} max={s.maxType} color="#f59e0b" />
+            <MiniBar label="Transferee" value={s.transferee} max={s.maxType} color="#3b82f6" />
+          </div>
         </div>
       </div>
 
       {/* Violations summary */}
       <div className="dash-recent">
         <div className="dash-recent-header">
-          <AlertTriangle size={16} />
+          <AlertTriangle size={16} strokeWidth={2} />
           <h3>Violations Summary</h3>
           {s.allViolations.length > 0 && <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{s.allViolations.length} total</span>}
         </div>
@@ -247,7 +307,7 @@ export default function Dashboard() {
       {/* Recent students */}
       <div className="dash-recent">
         <div className="dash-recent-header">
-          <Users size={16} />
+          <Users size={16} strokeWidth={2} />
           <h3>Recently Added Students</h3>
           <Link to="/students">View all</Link>
         </div>

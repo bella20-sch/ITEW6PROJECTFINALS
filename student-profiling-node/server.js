@@ -10,11 +10,18 @@ const SECRET_KEY = 'secret-key';
 const DB_FILE = path.join(__dirname, 'database.json');
 
 app.use(cors());
-app.use(express.json());
+/* Default json limit is 100kb — base64 photos (students/faculty) exceed that and the body is rejected. */
+app.use(express.json({ limit: '15mb' }));
 
 // Load database helper
 const getDb = () => JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
 const saveDb = (data) => fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf8');
+
+const omitPassword = (row) => {
+    if (!row || typeof row !== 'object') return row;
+    const { password: _p, ...rest } = row;
+    return rest;
+};
 
 // Fake Middleware for Token Checking 
 const authenticate = (req, res, next) => {
@@ -28,6 +35,11 @@ const authenticate = (req, res, next) => {
         } catch(e) { /* ignore */ }
     }
     return res.status(401).json({ error: 'Unauthorized' });
+};
+
+const requireAdmin = (req, res, next) => {
+    if (req.user?.role === 'Admin') return next();
+    return res.status(403).json({ message: 'Admin only.' });
 };
 
 // --- AUTH ROUTE ---
@@ -52,9 +64,12 @@ app.get('/api/user', authenticate, (req, res) => res.json(req.user));
 // --- META ENDPOINTS (Departments, Courses, Faculty) ---
 app.get('/api/meta/:type', authenticate, (req, res) => {
     const db = getDb();
-    const type = req.params.type; 
-    if (db[type]) return res.json(db[type]);
-    return res.status(404).json({ error: 'Not found' });
+    const type = req.params.type;
+    if (!db[type]) return res.status(404).json({ error: 'Not found' });
+    if (type === 'faculty') {
+        return res.json(db.faculty.map(omitPassword));
+    }
+    return res.json(db[type]);
 });
 
 app.post('/api/meta/:type', authenticate, (req, res) => {
@@ -161,6 +176,9 @@ app.get('/api/students', authenticate, (req, res) => {
     }
     if (section) studs = studs.filter(s => s.section === section);
     if (courseID) studs = studs.filter(s => String(s.courseID) === String(courseID));
+    if (studentType) {
+        studs = studs.filter(s => (s.studentType || 'Regular') === String(studentType));
+    }
 
     if (skill) {
         const sq = skill.toLowerCase();
@@ -188,7 +206,7 @@ app.get('/api/students/:id', authenticate, (req, res) => {
     if (!student) return res.status(404).json({ error: 'Student not found' });
 
     return res.json({
-        ...student,
+        ...omitPassword(student),
         academicHistory: db.academic.filter(a => a.studentID === id),
         medicalHistory: db.medical.filter(m => m.studentID === id),
         activities: (db.activities || []).filter(ac => ac.studentID === id),
@@ -243,6 +261,140 @@ app.delete('/api/students/:id', authenticate, (req, res) => {
     return res.json({ ok: true });
 });
 
+// --- MIS ADMIN: provision accounts (used by LMS Admin page) ---
+app.post('/api/admin/students', authenticate, requireAdmin, (req, res) => {
+    const {
+        firstName,
+        lastName,
+        email,
+        password,
+        departmentID,
+        courseID,
+        section,
+        adviserFacultyID,
+        studentType,
+    } = req.body || {};
+
+    if (!firstName || !lastName || !email || !password) {
+        return res.status(400).json({ message: 'Missing required fields.' });
+    }
+    if (String(password).length < 6) {
+        return res.status(400).json({ message: 'Password must be at least 6 characters.' });
+    }
+    const dept = Number(departmentID);
+    const crs = Number(courseID);
+    const adv = Number(adviserFacultyID);
+    const sec = String(section || '').trim();
+    if (!dept || !crs || !sec || !adv) {
+        return res.status(400).json({ message: 'Department, course, section, and adviser are required.' });
+    }
+
+    const db = getDb();
+    const em = String(email).trim().toLowerCase();
+    if (db.students.some(s => String(s.email || '').toLowerCase() === em)) {
+        return res.status(409).json({ message: 'A student with this email already exists.' });
+    }
+    if (db.faculty.some(f => String(f.email || '').toLowerCase() === em)) {
+        return res.status(409).json({ message: 'This email is already used by a faculty account.' });
+    }
+
+    const adviser = db.faculty.find(f => f.facultyID === adv);
+    if (!adviser) return res.status(400).json({ message: 'Invalid faculty adviser.' });
+
+    const allowedTypes = ['Regular', 'Irregular', 'Transferee'];
+    const st = allowedTypes.includes(String(studentType || '').trim())
+        ? String(studentType).trim()
+        : 'Regular';
+
+    const nextId = (db.students.length > 0 ? Math.max(...db.students.map(s => s.studentID)) : 0) + 1;
+    const today = new Date().toISOString().slice(0, 10);
+    const newStudent = {
+        studentID: nextId,
+        firstName: String(firstName).trim(),
+        middleName: '',
+        lastName: String(lastName).trim(),
+        suffix: '',
+        gender: '',
+        birthDate: '',
+        birthPlace: '',
+        nationality: 'Filipino',
+        civilStatus: 'Single',
+        contactNumber: '',
+        email: em,
+        password: String(password),
+        address: '',
+        yearLevel: 1,
+        section: sec,
+        studentType: st,
+        enrollmentStatus: 'Enrolled',
+        dateEnrolled: today,
+        courseID: crs,
+        departmentID: dept,
+        adviserFacultyID: adv,
+    };
+    db.students.push(newStudent);
+    saveDb(db);
+    return res.status(201).json(omitPassword(newStudent));
+});
+
+app.post('/api/admin/faculty', authenticate, requireAdmin, (req, res) => {
+    const {
+        firstName,
+        lastName,
+        email,
+        password,
+        departmentID,
+        courseID,
+        section,
+    } = req.body || {};
+
+    if (!firstName || !lastName || !email || !password) {
+        return res.status(400).json({ message: 'Missing required fields.' });
+    }
+    if (String(password).length < 6) {
+        return res.status(400).json({ message: 'Password must be at least 6 characters.' });
+    }
+    const dept = Number(departmentID);
+    const crs = Number(courseID);
+    const sec = String(section || '').trim();
+    if (!dept || !crs || !sec) {
+        return res.status(400).json({ message: 'Department, course, and section are required.' });
+    }
+
+    const db = getDb();
+    const em = String(email).trim().toLowerCase();
+    if (db.faculty.some(f => String(f.email || '').toLowerCase() === em)) {
+        return res.status(409).json({ message: 'A faculty member with this email already exists.' });
+    }
+    if (db.students.some(s => String(s.email || '').toLowerCase() === em)) {
+        return res.status(409).json({ message: 'This email is already used by a student account.' });
+    }
+
+    const nextId = (db.faculty.length > 0 ? Math.max(...db.faculty.map(f => f.facultyID)) : 0) + 1;
+    const today = new Date().toISOString().slice(0, 10);
+    const newFaculty = {
+        facultyID: nextId,
+        departmentID: dept,
+        firstName: String(firstName).trim(),
+        lastName: String(lastName).trim(),
+        middleName: '',
+        position: 'Instructor',
+        employmentStatus: 'Full-time',
+        hireDate: today,
+        email: em,
+        password: String(password),
+        contactNumber: '',
+        officeLocation: '',
+        courseID: crs,
+        section: sec,
+        photo: '',
+    };
+    db.faculty.push(newFaculty);
+    saveDb(db);
+    return res.status(201).json(omitPassword(newFaculty));
+});
+
 app.listen(PORT, () => {
     console.log(`Node/JSON Backend running on http://localhost:${PORT}`);
+    console.log('MIS admin routes: POST /api/admin/students, POST /api/admin/faculty');
 });
