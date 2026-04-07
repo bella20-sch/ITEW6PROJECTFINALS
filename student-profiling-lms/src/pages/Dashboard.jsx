@@ -109,7 +109,8 @@ export default function Dashboard() {
               College dashboard
             </h2>
             <p className="dashboard-masthead-sub">
-              Live snapshot of enrollment, programs, and faculty — Pamantasan ng Cabuyao student profiling (BSIT · BSCS · BSIS).
+              Live snapshot of enrollment, programs, and faculty — Pamantasan ng Cabuyao student profiling (
+              <span className="dashboard-masthead-programs">BSIT · BSCS · BSIS</span>).
             </p>
             <ul className="dashboard-masthead-tags">
               <li><Sparkles size={12} strokeWidth={2} aria-hidden /> {students.length} students</li>

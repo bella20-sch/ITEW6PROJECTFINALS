@@ -226,8 +226,13 @@ export default function Faculty() {
       {!filtered.length && <div className="empty-state"><p>No faculty match your filters.</p></div>}
 
       {isAdmin && (
-        <Modal title={modal.mode === 'add' ? 'Add Faculty' : 'Edit Faculty'} open={modal.open} onClose={() => setModal({ open: false })}>
-          <form onSubmit={handleSubmit} className="form">
+        <Modal
+          title={modal.mode === 'add' ? 'Add Faculty' : 'Edit Faculty'}
+          open={modal.open}
+          onClose={() => setModal({ open: false })}
+          modalClassName="modal--faculty"
+        >
+          <form onSubmit={handleSubmit} className="form faculty-form-layout">
 
             {/* Photo */}
             <div className="form-section">
@@ -260,26 +265,64 @@ export default function Faculty() {
               </div>
             </div>
 
-            <div className="form-row">
-              <div><label>First Name <ReqStar /></label><input value={form.firstName} onChange={e => setForm({ ...form, firstName: e.target.value })} required /></div>
-              <div><label>Middle Name</label><input value={form.middleName} onChange={e => setForm({ ...form, middleName: e.target.value })} /></div>
-              <div><label>Last Name <ReqStar /></label><input value={form.lastName} onChange={e => setForm({ ...form, lastName: e.target.value })} required /></div>
+            <div>
+              <label>First Name <ReqStar /></label>
+              <input value={form.firstName} onChange={e => setForm({ ...form, firstName: e.target.value })} required />
             </div>
-            <label>Position <ReqStar /></label>
-            <input value={form.position} onChange={e => setForm({ ...form, position: e.target.value })} required placeholder="e.g. Professor, Instructor" />
-            <label>Employment Status</label>
-            <select value={form.employmentStatus} onChange={e => setForm({ ...form, employmentStatus: e.target.value })}>
-              <option>Full-time</option><option>Part-time</option><option>Contract</option>
-            </select>
-            <label>Hire Date</label>
-            <input type="date" value={form.hireDate} onChange={e => setForm({ ...form, hireDate: e.target.value })} />
-            <label>Email <ReqStar /></label>
-            <input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} required />
-            <label>Contact Number</label>
-            <input type="tel" value={form.contactNumber} onChange={e => setForm({ ...form, contactNumber: e.target.value })}
-              placeholder="09XXXXXXXXX" pattern="^(09\d{9}|\+63\d{10})$" title="Enter 11-digit number or +63 format" />
-            <label>Office Location</label>
-            <input value={form.officeLocation} onChange={e => setForm({ ...form, officeLocation: e.target.value })} placeholder="e.g. Room 201, CCS Building" />
+            <div>
+              <label>Middle Name</label>
+              <input value={form.middleName} onChange={e => setForm({ ...form, middleName: e.target.value })} />
+            </div>
+            <div>
+              <label>Last Name <ReqStar /></label>
+              <input value={form.lastName} onChange={e => setForm({ ...form, lastName: e.target.value })} required />
+            </div>
+            <div className="form-row-2">
+              <div>
+                <label>Position <ReqStar /></label>
+                <input
+                  value={form.position}
+                  onChange={e => setForm({ ...form, position: e.target.value })}
+                  required
+                  placeholder="e.g. Professor, Instructor"
+                />
+              </div>
+              <div>
+                <label>Employment Status</label>
+                <select value={form.employmentStatus} onChange={e => setForm({ ...form, employmentStatus: e.target.value })}>
+                  <option>Full-time</option><option>Part-time</option><option>Contract</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="form-row-2">
+              <div>
+                <label>Hire Date</label>
+                <input type="date" value={form.hireDate} onChange={e => setForm({ ...form, hireDate: e.target.value })} />
+              </div>
+              <div>
+                <label>Email <ReqStar /></label>
+                <input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} required />
+              </div>
+            </div>
+
+            <div className="form-row-contact-office">
+              <div>
+                <label>Contact Number</label>
+                <input
+                  type="tel"
+                  value={form.contactNumber}
+                  onChange={e => setForm({ ...form, contactNumber: e.target.value })}
+                  placeholder="09XXXXXXXXX"
+                  pattern="^(09\d{9}|\+63\d{10})$"
+                  title="Enter 11-digit number or +63 format"
+                />
+              </div>
+              <div>
+                <label>Office Location</label>
+                <input value={form.officeLocation} onChange={e => setForm({ ...form, officeLocation: e.target.value })} placeholder="e.g. Room 201, CCS Building" />
+              </div>
+            </div>
 
             <div className="form-actions">
               <button type="button" className="btn btn-outline" onClick={() => setModal({ open: false })} disabled={busy}>Cancel</button>
