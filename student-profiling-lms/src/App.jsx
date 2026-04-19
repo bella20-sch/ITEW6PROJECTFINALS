@@ -14,6 +14,7 @@ import Reports from './pages/Reports'
 import Login from './pages/Login'
 import Admin from './pages/Admin'
 import RequireAdmin from './components/RequireAdmin'
+import RequireRole from './components/RequireRole'
 import Workspace from './pages/Workspace'
 import FacultyMyClasses from './pages/FacultyMyClasses'
 import FacultyClassSection from './pages/FacultyClassSection'
@@ -99,15 +100,36 @@ export default function App() {
           }
         />
         <Route path="students/:id" element={<StudentProfile />} />
-        <Route path="courses" element={<Courses />} />
-        <Route path="faculty/:id" element={<Faculty />} />
-        <Route path="faculty" element={<Faculty />} />
-        <Route path="reports" element={<Reports />} />
-        <Route path="workspace" element={<Workspace />} />
-        <Route path="my-classes/:teachingLoadId/activities/:activityId" element={<FacultyClassActivity />} />
-        <Route path="my-classes/:teachingLoadId/students/:studentId" element={<FacultyClassStudent />} />
-        <Route path="my-classes/:teachingLoadId" element={<FacultyClassSection />} />
-        <Route path="my-classes" element={<FacultyMyClasses />} />
+        <Route path="courses" element={<RequireRole roles={['Admin', 'Faculty']}><Courses /></RequireRole>} />
+        <Route path="faculty/:id" element={<RequireRole roles={['Admin', 'Faculty']}><Faculty /></RequireRole>} />
+        <Route path="faculty" element={<RequireRole roles={['Admin', 'Faculty']}><Faculty /></RequireRole>} />
+        <Route path="reports" element={<RequireRole roles={['Admin']}><Reports /></RequireRole>} />
+        <Route path="workspace" element={<RequireRole roles={['Faculty', 'Student']}><Workspace /></RequireRole>} />
+        <Route
+          path="my-classes/:teachingLoadId/activities/:activityId"
+          element={
+            <RequireRole roles={['Faculty']}>
+              <FacultyClassActivity />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="my-classes/:teachingLoadId/students/:studentId"
+          element={
+            <RequireRole roles={['Faculty']}>
+              <FacultyClassStudent />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="my-classes/:teachingLoadId"
+          element={
+            <RequireRole roles={['Faculty']}>
+              <FacultyClassSection />
+            </RequireRole>
+          }
+        />
+        <Route path="my-classes" element={<RequireRole roles={['Faculty']}><FacultyMyClasses /></RequireRole>} />
       </Route>
     </Routes>
   )
