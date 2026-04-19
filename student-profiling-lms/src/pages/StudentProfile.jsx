@@ -8,6 +8,8 @@ import { useData } from '../context/DataContext'
 import { useAuth } from '../context/AuthContext'
 import { useLmsBase, lmsPath } from '../lib/lmsPaths'
 import { apiFetch } from '../lib/api'
+import ContentLoadingSkeleton from '../components/ContentLoadingSkeleton'
+import DirectoryLoadErrorPanel from '../components/DirectoryLoadErrorPanel'
 import ReqStar from '../components/ReqStar'
 import Modal from '../components/Modal'
 
@@ -272,7 +274,7 @@ const SUB_FIELDS = {
 export default function StudentProfile() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { crud, subCrud, profiles, courses, departments } = useData()
+  const { crud, subCrud, profiles, courses, departments, directoryStatus, reloadDirectory } = useData()
   const { currentUser, token } = useAuth()
   const isAdmin = currentUser?.role === 'Admin'
   const isStudent = currentUser?.role === 'Student'
@@ -342,7 +344,14 @@ export default function StudentProfile() {
   }
   const closeConfirm = () => setConfirm(c => ({ ...c, open: false }))
 
-  if (loading) return <div className="page"><p className="muted">Loading student profile…</p></div>
+  if (directoryStatus === 'loading' || directoryStatus === 'idle') {
+    return <ContentLoadingSkeleton title="Loading directory data…" />
+  }
+  if (directoryStatus === 'error') {
+    return <DirectoryLoadErrorPanel onRetry={reloadDirectory} />
+  }
+
+  if (loading) return <ContentLoadingSkeleton title="Loading student profile…" />
   if (!student) {
     const back = isStudent ? <Link to="/">Back to dashboard</Link> : <Link to={lmsPath(base, '/students')}>Back to directory</Link>
     return (

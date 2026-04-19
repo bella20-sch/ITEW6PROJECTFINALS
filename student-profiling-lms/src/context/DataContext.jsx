@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useCallback, useMemo, useState } from 'react'
+import { createContext, useContext, useEffect, useCallback, useMemo, useState, useRef } from 'react'
 import { apiFetch } from '../lib/api'
 import { useAuth } from './AuthContext'
 import { useToast } from './ToastContext'
@@ -6,22 +6,36 @@ import { useToast } from './ToastContext'
 const DataContext = createContext(null)
 
 export function DataProvider({ children }) {
-  const { token, isAuthenticated } = useAuth()
+  const { token, isAuthenticated, serverReachable } = useAuth()
   const { showToast } = useToast()
 
   const [ready, setReady] = useState(false)
+  /** idle = logged out; loading/idle+auth = fetching; ready = success; error = failed (cache cleared) */
+  const [directoryStatus, setDirectoryStatus] = useState('idle')
   const [departments, setDepartments] = useState([])
   const [courses, setCourses] = useState([])
   const [faculty, setFaculty] = useState([])
   const [students, setStudents] = useState([])
   const [profiles, setProfiles] = useState({})
 
+  const clearDirectory = useCallback(() => {
+    setDepartments([])
+    setCourses([])
+    setFaculty([])
+    setStudents([])
+    setProfiles({})
+  }, [])
+
   const reloadDirectory = useCallback(async () => {
     if (!isAuthenticated || !token) {
+      setDirectoryStatus('idle')
       setReady(false)
-      setDepartments([]); setCourses([]); setFaculty([]); setStudents([]); setProfiles({})
+      clearDirectory()
       return
     }
+    setDirectoryStatus('loading')
+    setReady(false)
+    clearDirectory()
     try {
       const [deps, crs, fac, studs] = await Promise.all([
         apiFetch('/api/meta/departments', { token }),
@@ -33,15 +47,28 @@ export function DataProvider({ children }) {
       setCourses(Array.isArray(crs) ? crs : [])
       setFaculty(Array.isArray(fac) ? fac : [])
       setStudents(Array.isArray(studs) ? studs : [])
+      setDirectoryStatus('ready')
       setReady(true)
     } catch {
+      clearDirectory()
+      setDirectoryStatus('error')
       setReady(false)
     }
-  }, [isAuthenticated, token])
+  }, [isAuthenticated, token, clearDirectory])
 
   useEffect(() => {
     reloadDirectory()
   }, [reloadDirectory])
+
+  const prevServerReachable = useRef(null)
+  useEffect(() => {
+    if (!isAuthenticated || !token) return
+    const prev = prevServerReachable.current
+    prevServerReachable.current = serverReachable
+    if (serverReachable === true && prev === false) {
+      reloadDirectory()
+    }
+  }, [isAuthenticated, token, serverReachable, reloadDirectory])
 
   const fetchStudentProfile = useCallback(async (studentID) => {
     const id = Number(studentID)
@@ -181,7 +208,20 @@ export function DataProvider({ children }) {
   }), [departments, courses, faculty, students, profiles, token, fetchStudentProfile, showToast])
 
   return (
-    <DataContext.Provider value={{ ready, departments, courses, faculty, students, crud, subCrud, profiles, reloadDirectory }}>
+    <DataContext.Provider
+      value={{
+        ready,
+        directoryStatus,
+        departments,
+        courses,
+        faculty,
+        students,
+        crud,
+        subCrud,
+        profiles,
+        reloadDirectory,
+      }}
+    >
       {children}
     </DataContext.Provider>
   )

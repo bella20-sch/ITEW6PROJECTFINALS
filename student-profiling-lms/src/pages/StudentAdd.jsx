@@ -8,6 +8,7 @@ import ConfirmModal from '../components/ConfirmModal'
 import { useData } from '../context/DataContext'
 import { useToast } from '../context/ToastContext'
 import { useLmsBase, lmsPath } from '../lib/lmsPaths'
+import DirectoryFetchBarrier from '../components/DirectoryFetchBarrier'
 
 export default function StudentAdd() {
   const { students, courses, departments, crud } = useData()
@@ -23,6 +24,7 @@ export default function StudentAdd() {
   )
 
   return (
+    <DirectoryFetchBarrier>
     <div className="page student-add-page">
       <div className="student-form-page-toolbar">
         <Link to={lmsPath(base, '/students')} className="student-form-page-back">
@@ -99,5 +101,6 @@ export default function StudentAdd() {
         }}
       />
     </div>
+    </DirectoryFetchBarrier>
   )
 }

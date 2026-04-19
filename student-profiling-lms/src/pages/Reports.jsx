@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Trophy, Code, Award, ChevronDown, Users, Search, GraduationCap, AlertTriangle, Briefcase, Star, Shield, FileBarChart, Sparkles } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useData } from '../context/DataContext'
+import DirectoryFetchBarrier from '../components/DirectoryFetchBarrier'
 import { apiFetch } from '../lib/api'
 
 const isDeansLister = (gpa) => { const g = Number(gpa); return !isNaN(g) && g >= 1.0 && g <= 2.50 }
@@ -140,6 +141,7 @@ export default function Reports() {
   }
 
   return (
+    <DirectoryFetchBarrier>
     <div className="page">
       <header className="reports-hero" aria-labelledby="reports-hero-title">
         <div className="reports-hero-glow" aria-hidden="true" />
@@ -316,5 +318,6 @@ export default function Reports() {
         })}
       </div>
     </div>
+    </DirectoryFetchBarrier>
   )
 }

@@ -5,12 +5,14 @@ import { useData } from '../context/DataContext'
 import { apiFetch } from '../lib/api'
 import { useLmsBase, lmsPath } from '../lib/lmsPaths'
 import { GraduationCap, Layers, ChevronRight, BookOpen } from 'lucide-react'
+import ContentLoadingSkeleton from '../components/ContentLoadingSkeleton'
+import DirectoryLoadErrorPanel from '../components/DirectoryLoadErrorPanel'
 
 const PROGRAM_CODES = ['BSIT', 'BSCS', 'BSIS']
 
 export default function FacultyMyClasses() {
   const { currentUser, token } = useAuth()
-  const { courses } = useData()
+  const { courses, directoryStatus, reloadDirectory } = useData()
   const base = useLmsBase()
   const [assignments, setAssignments] = useState([])
   const [loading, setLoading] = useState(true)
@@ -54,12 +56,15 @@ export default function FacultyMyClasses() {
     return <Navigate to={lmsPath(base, '/')} replace />
   }
 
+  if (directoryStatus === 'loading' || directoryStatus === 'idle') {
+    return <ContentLoadingSkeleton title="Loading directory data…" />
+  }
+  if (directoryStatus === 'error') {
+    return <DirectoryLoadErrorPanel onRetry={reloadDirectory} />
+  }
+
   if (loading) {
-    return (
-      <div className="page">
-        <p className="muted">Loading your classes…</p>
-      </div>
-    )
+    return <ContentLoadingSkeleton title="Loading your classes…" />
   }
 
   return (

@@ -44,3 +44,26 @@ export async function apiFetch(path, { token, method = 'GET', body, headers } = 
   return data
 }
 
+/**
+ * Lightweight reachability check (no auth). Fails on network loss, down API, or unreadable DB (503).
+ */
+export async function checkApiHealth({ timeoutMs = 12000 } = {}) {
+  const base = getApiBase()
+  const url = `${base}/api/health`
+  const ctrl = new AbortController()
+  const t = setTimeout(() => ctrl.abort(), timeoutMs)
+  try {
+    const res = await fetch(url, {
+      method: 'GET',
+      signal: ctrl.signal,
+      headers: { Accept: 'application/json' },
+    })
+    clearTimeout(t)
+    if (!res.ok) return { ok: false }
+    return { ok: true }
+  } catch {
+    clearTimeout(t)
+    return { ok: false }
+  }
+}
+

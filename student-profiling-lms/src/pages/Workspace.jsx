@@ -4,11 +4,13 @@ import { useAuth } from '../context/AuthContext'
 import { useData } from '../context/DataContext'
 import { apiFetch } from '../lib/api'
 import { useLmsBase, lmsPath } from '../lib/lmsPaths'
+import ContentLoadingSkeleton from '../components/ContentLoadingSkeleton'
+import DirectoryLoadErrorPanel from '../components/DirectoryLoadErrorPanel'
 import { BookOpen, ClipboardList, GraduationCap, Send, Users, FileText } from 'lucide-react'
 
 export default function Workspace() {
   const { token, currentUser } = useAuth()
-  const { courses } = useData()
+  const { courses, directoryStatus, reloadDirectory } = useData()
   const base = useLmsBase()
 
   const [assignments, setAssignments] = useState([])
@@ -139,12 +141,15 @@ export default function Workspace() {
     [assignments, courseCode],
   )
 
+  if (directoryStatus === 'loading' || directoryStatus === 'idle') {
+    return <ContentLoadingSkeleton title="Loading directory data…" />
+  }
+  if (directoryStatus === 'error') {
+    return <DirectoryLoadErrorPanel onRetry={reloadDirectory} />
+  }
+
   if (loading) {
-    return (
-      <div className="page">
-        <p className="muted">Loading workspace…</p>
-      </div>
-    )
+    return <ContentLoadingSkeleton title="Loading workspace…" />
   }
 
   return (

@@ -17,6 +17,8 @@ import {
 import { useData } from '../context/DataContext'
 import { useAuth } from '../context/AuthContext'
 import { apiFetch } from '../lib/api'
+import ContentLoadingSkeleton from '../components/ContentLoadingSkeleton'
+import DirectoryLoadErrorPanel from '../components/DirectoryLoadErrorPanel'
 
 function formatDate(iso) {
   if (!iso) return '—'
@@ -27,7 +29,7 @@ function formatDate(iso) {
 }
 
 export default function FacultyMyProfile() {
-  const { courses, departments, crud } = useData()
+  const { courses, departments, crud, directoryStatus, reloadDirectory } = useData()
   const { token } = useAuth()
   const me = crud.faculty.getAll()[0] || null
   const [assignments, setAssignments] = useState([])
@@ -63,6 +65,13 @@ export default function FacultyMyProfile() {
     () => courses.find((c) => Number(c.courseID) === Number(me?.courseID)),
     [courses, me?.courseID],
   )
+
+  if (directoryStatus === 'loading' || directoryStatus === 'idle') {
+    return <ContentLoadingSkeleton title="Loading directory data…" />
+  }
+  if (directoryStatus === 'error') {
+    return <DirectoryLoadErrorPanel onRetry={reloadDirectory} />
+  }
 
   if (!me) {
     return (

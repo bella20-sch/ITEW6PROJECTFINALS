@@ -5,6 +5,7 @@ import { useToast } from '../context/ToastContext'
 import { Building2, Plus, Pencil, Trash2, Search } from 'lucide-react'
 import Modal from '../components/Modal'
 import ConfirmModal from '../components/ConfirmModal'
+import DirectoryFetchBarrier from '../components/DirectoryFetchBarrier'
 
 export default function Departments() {
   const { crud } = useData()
@@ -76,6 +77,7 @@ export default function Departments() {
     : deps
 
   return (
+    <DirectoryFetchBarrier>
     <div className="page">
       <div className="page-header">
         <h2>Departments</h2>
@@ -144,5 +146,6 @@ export default function Departments() {
         onCancel={() => setConfirm({ open: false })}
       />
     </div>
+    </DirectoryFetchBarrier>
   )
 }
