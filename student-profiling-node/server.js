@@ -20,6 +20,7 @@ const getDb = () => {
     if (!db.classActivities) db.classActivities = [];
     if (!db.classActivitySubmissions) db.classActivitySubmissions = [];
     if (!db.sectionMaterials) db.sectionMaterials = [];
+    if (!db.facultyStudentPeriodGrades) db.facultyStudentPeriodGrades = [];
     return db;
 };
 const saveDb = (data) => fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf8');
@@ -90,6 +91,104 @@ const facultyManagedSectionKeys = (db, facultyId) => {
 
 const studentInFacultyManagedSections = (student, keys) =>
     keys.size > 0 && keys.has(sectionEnrollmentKey(student.courseID, student.section));
+
+const GRADING_PERIODS = new Set(['prelim', 'midterm', 'finals']);
+const ASSESSMENT_KINDS = new Set(['activity', 'quiz', 'exam']);
+
+const normActivityFields = (a) => {
+    if (!a || typeof a !== 'object') return a;
+    const p = String(a.gradingPeriod || 'prelim').toLowerCase();
+    const k = String(a.assessmentKind || 'activity').toLowerCase();
+    return {
+        ...a,
+        gradingPeriod: GRADING_PERIODS.has(p) ? p : 'prelim',
+        assessmentKind: ASSESSMENT_KINDS.has(k) ? k : 'activity',
+    };
+};
+
+/** Average percent (0–100) from graded submissions for items of `kind` in `period`; null if none graded. */
+const computedAssessmentAveragePercent = (db, teachingLoadID, studentID, period, kind) => {
+    const acts = (db.classActivities || [])
+        .map(normActivityFields)
+        .filter(
+            (x) =>
+                Number(x.teachingLoadID) === Number(teachingLoadID) &&
+                x.gradingPeriod === period &&
+                x.assessmentKind === kind,
+        );
+    if (!acts.length) return null;
+    const subs = db.classActivitySubmissions || [];
+    const vals = [];
+    acts.forEach((act) => {
+        const sub = subs.find(
+            (s) =>
+                Number(s.classActivityID) === Number(act.classActivityID) &&
+                Number(s.studentID) === Number(studentID),
+        );
+        if (sub && sub.score != null && sub.gradedAt != null) {
+            const max = Number(act.maxScore) > 0 ? Number(act.maxScore) : 100;
+            vals.push((Number(sub.score) / max) * 100);
+        }
+    });
+    if (!vals.length) return null;
+    const avg = vals.reduce((s, v) => s + v, 0) / vals.length;
+    return Math.round(avg * 100) / 100;
+};
+
+const periodWeightedTotal = (activityPct, attendancePct, quizPct, examPct) => {
+    const na = (v) => (Number.isFinite(v) ? Math.max(0, Math.min(100, v)) : 0);
+    return (
+        Math.round(
+            (0.2 * na(activityPct) +
+                0.1 * na(attendancePct) +
+                0.2 * na(quizPct) +
+                0.5 * na(examPct)) *
+                100,
+        ) / 100
+    );
+};
+
+const assertFacultyOwnsTeachingLoad = (db, req, tlId) => {
+    const tl = (db.teachingLoads || []).find((t) => Number(t.teachingLoadID) === Number(tlId));
+    if (!tl) return { ok: false, status: 404, msg: 'Class not found.' };
+    if (req.user?.role !== 'Faculty' || Number(tl.facultyID) !== Number(req.user.id)) {
+        return { ok: false, status: 403, msg: 'You do not teach this class.' };
+    }
+    return { ok: true, tl };
+};
+
+const getPeriodGradeRow = (db, teachingLoadID, studentID, schoolYear, semester, period) => {
+    const arr = db.facultyStudentPeriodGrades || [];
+    return arr.find(
+        (g) =>
+            Number(g.teachingLoadID) === Number(teachingLoadID) &&
+            Number(g.studentID) === Number(studentID) &&
+            String(g.schoolYear) === String(schoolYear) &&
+            Number(g.semester) === Number(semester) &&
+            String(g.period) === String(period),
+    );
+};
+
+const upsertPeriodGradeRow = (db, teachingLoadID, studentID, schoolYear, semester, period, patch) => {
+    const arr = db.facultyStudentPeriodGrades || (db.facultyStudentPeriodGrades = []);
+    let row = getPeriodGradeRow(db, teachingLoadID, studentID, schoolYear, semester, period);
+    if (!row) {
+        row = {
+            facultyPeriodGradeID: nextAutoId(arr, 'facultyPeriodGradeID'),
+            teachingLoadID: Number(teachingLoadID),
+            studentID: Number(studentID),
+            schoolYear: String(schoolYear),
+            semester: Number(semester),
+            period: String(period),
+            attendancePct: 0,
+            quizPct: 0,
+            examPct: 0,
+        };
+        arr.push(row);
+    }
+    Object.assign(row, patch);
+    return row;
+};
 
 const normEmail = (v) => String(v || '').trim().toLowerCase();
 
@@ -686,7 +785,8 @@ app.get('/api/me/activities', authenticate, (req, res) => {
         const acts = (db.classActivities || []).filter((a) => Number(a.facultyID) === uid);
         const subs = db.classActivitySubmissions || [];
         const out = acts.map((a) => {
-            const related = subs.filter((s) => Number(s.classActivityID) === Number(a.classActivityID));
+            const n = normActivityFields(a);
+            const related = subs.filter((s) => Number(s.classActivityID) === Number(n.classActivityID));
             const submissions = related.map((sub) => {
                 const st = students.find((x) => x.studentID === sub.studentID);
                 return {
@@ -695,8 +795,8 @@ app.get('/api/me/activities', authenticate, (req, res) => {
                 };
             });
             return {
-                ...a,
-                id: a.classActivityID,
+                ...n,
+                id: n.classActivityID,
                 submissions,
             };
         });
@@ -711,10 +811,11 @@ app.get('/api/me/activities', authenticate, (req, res) => {
         const acts = (db.classActivities || []).filter((a) => loadIds.has(Number(a.teachingLoadID)));
         const subs = db.classActivitySubmissions || [];
         const out = acts.map((a) => {
+            const n = normActivityFields(a);
             const my = subs.find(
-                (s) => Number(s.classActivityID) === Number(a.classActivityID) && Number(s.studentID) === uid,
+                (s) => Number(s.classActivityID) === Number(n.classActivityID) && Number(s.studentID) === uid,
             );
-            return { ...a, id: a.classActivityID, mySubmission: my || null };
+            return { ...n, id: n.classActivityID, mySubmission: my || null };
         });
         return res.json(out);
     }
@@ -772,6 +873,8 @@ app.post('/api/faculty/activities', authenticate, requireFaculty, (req, res) => 
     const title = String(req.body?.title || '').trim();
     if (!title) return res.status(400).json({ message: 'Title is required.' });
     const arr = db.classActivities;
+    const gp = String(req.body?.gradingPeriod || 'prelim').toLowerCase();
+    const ak = String(req.body?.assessmentKind || 'activity').toLowerCase();
     const row = {
         classActivityID: nextAutoId(arr, 'classActivityID'),
         facultyID: fid,
@@ -786,6 +889,8 @@ app.post('/api/faculty/activities', authenticate, requireFaculty, (req, res) => 
         allow_late: !!req.body?.allow_late,
         maxScore: Number(req.body?.maxScore) > 0 ? Number(req.body.maxScore) : 100,
         createdAt: new Date().toISOString(),
+        gradingPeriod: GRADING_PERIODS.has(gp) ? gp : 'prelim',
+        assessmentKind: ASSESSMENT_KINDS.has(ak) ? ak : 'activity',
     };
     arr.push(row);
     saveDb(db);
@@ -885,6 +990,143 @@ app.post('/api/faculty/activities/:id/grade', authenticate, requireFaculty, (req
     sub.gradedAt = new Date().toISOString();
     saveDb(db);
     return res.json(sub);
+});
+
+app.get('/api/faculty/teaching-loads/:id/classroom', authenticate, requireFaculty, (req, res) => {
+    const db = getDb();
+    const chk = assertFacultyOwnsTeachingLoad(db, req, req.params.id);
+    if (!chk.ok) return res.status(chk.status).json({ message: chk.msg });
+    const tl = chk.tl;
+    const students = (db.students || []).filter((s) => studentMatchesLoad(s, tl)).map(omitPassword);
+    const crs = db.courses.find((c) => Number(c.courseID) === Number(tl.courseID));
+    const materials = (db.sectionMaterials || []).filter((m) => Number(m.teachingLoadID) === Number(tl.teachingLoadID));
+    const subsAll = db.classActivitySubmissions || [];
+    const activities = (db.classActivities || [])
+        .filter((a) => Number(a.teachingLoadID) === Number(tl.teachingLoadID))
+        .map((a) => {
+            const n = normActivityFields(a);
+            const related = subsAll.filter((s) => Number(s.classActivityID) === Number(n.classActivityID));
+            const submissions = related.map((sub) => {
+                const st = students.find((x) => x.studentID === sub.studentID);
+                return {
+                    ...sub,
+                    studentName: st ? `${st.firstName} ${st.lastName}`.trim() : `Student #${sub.studentID}`,
+                };
+            });
+            const rosterStatus = students.map((st) => {
+                const sub = related.find((s) => Number(s.studentID) === Number(st.studentID));
+                return {
+                    studentID: st.studentID,
+                    studentName: `${st.lastName}, ${st.firstName}`.trim(),
+                    submitted: !!(sub && sub.submittedAt),
+                    graded: !!(sub && sub.gradedAt),
+                    score: sub?.score ?? null,
+                };
+            });
+            return { ...n, id: n.classActivityID, submissions, rosterStatus };
+        });
+    return res.json({
+        teachingLoad: {
+            ...tl,
+            id: tl.teachingLoadID,
+            courseCode: crs?.courseCode || '',
+            courseName: crs?.courseName || '',
+        },
+        students,
+        materials,
+        activities,
+    });
+});
+
+app.get('/api/faculty/teaching-loads/:id/gradebook', authenticate, requireFaculty, (req, res) => {
+    const db = getDb();
+    const chk = assertFacultyOwnsTeachingLoad(db, req, req.params.id);
+    if (!chk.ok) return res.status(chk.status).json({ message: chk.msg });
+    const tl = chk.tl;
+    const schoolYear = String(req.query.schoolYear || '2025-2026');
+    const semester = Number(req.query.semester) === 2 ? 2 : 1;
+    const students = (db.students || []).filter((s) => studentMatchesLoad(s, tl));
+    const periods = ['prelim', 'midterm', 'finals'];
+    const weights = { activity: 0.2, attendance: 0.1, quiz: 0.2, exam: 0.5 };
+    const rows = students.map((st) => {
+        const sid = Number(st.studentID);
+        const byPeriod = {};
+        const periodTotals = [];
+        periods.forEach((period) => {
+            const activityPct =
+                computedAssessmentAveragePercent(db, tl.teachingLoadID, sid, period, 'activity') ?? 0;
+            const g = getPeriodGradeRow(db, tl.teachingLoadID, sid, schoolYear, semester, period);
+            const attendancePct = g != null ? Number(g.attendancePct) || 0 : 0;
+            const quizFromActs = computedAssessmentAveragePercent(db, tl.teachingLoadID, sid, period, 'quiz');
+            const examFromActs = computedAssessmentAveragePercent(db, tl.teachingLoadID, sid, period, 'exam');
+            const quizManualPct = Number(g?.quizPct) || 0;
+            const examManualPct = Number(g?.examPct) || 0;
+            const quizPct = quizFromActs != null ? quizFromActs : quizManualPct;
+            const examPct = examFromActs != null ? examFromActs : examManualPct;
+            const periodTotal = periodWeightedTotal(activityPct, attendancePct, quizPct, examPct);
+            periodTotals.push(periodTotal);
+            byPeriod[period] = {
+                activityPct,
+                attendancePct,
+                quizPct,
+                examPct,
+                quizManualPct,
+                examManualPct,
+                quizFromPostedActivities: quizFromActs != null,
+                examFromPostedActivities: examFromActs != null,
+                periodTotal,
+            };
+        });
+        const semesterAverage =
+            periodTotals.length === 3
+                ? Math.round(((periodTotals[0] + periodTotals[1] + periodTotals[2]) / 3) * 100) / 100
+                : null;
+        return {
+            studentID: sid,
+            studentName: `${st.lastName}, ${st.firstName}`.trim(),
+            periods: byPeriod,
+            semesterAverage,
+        };
+    });
+    return res.json({
+        schoolYear,
+        semester,
+        weights,
+        weightsNote:
+            'Period grade = 20% activities + 10% attendance + 20% quizzes + 50% exams (each 0–100). Quiz/exam posted as graded activities override manual inputs when present.',
+        students: rows,
+    });
+});
+
+app.put('/api/faculty/teaching-loads/:id/gradebook', authenticate, requireFaculty, (req, res) => {
+    const db = getDb();
+    const chk = assertFacultyOwnsTeachingLoad(db, req, req.params.id);
+    if (!chk.ok) return res.status(chk.status).json({ message: chk.msg });
+    const tlId = Number(req.params.id);
+    const studentID = Number(req.body?.studentID);
+    const schoolYear = String(req.body?.schoolYear || '2025-2026');
+    const semester = Number(req.body?.semester) === 2 ? 2 : 1;
+    const period = String(req.body?.period || '').toLowerCase();
+    if (!studentID) return res.status(400).json({ message: 'studentID is required.' });
+    if (!GRADING_PERIODS.has(period)) {
+        return res.status(400).json({ message: 'period must be prelim, midterm, or finals.' });
+    }
+    const roster = (db.students || []).filter((s) => studentMatchesLoad(s, chk.tl));
+    if (!roster.some((s) => Number(s.studentID) === studentID)) {
+        return res.status(400).json({ message: 'Student is not in this class section.' });
+    }
+    const clamp = (v) => {
+        const n = Number(v);
+        if (!Number.isFinite(n)) return 0;
+        return Math.max(0, Math.min(100, n));
+    };
+    const row = upsertPeriodGradeRow(db, tlId, studentID, schoolYear, semester, period, {
+        attendancePct: clamp(req.body?.attendancePct),
+        quizPct: clamp(req.body?.quizPct),
+        examPct: clamp(req.body?.examPct),
+    });
+    saveDb(db);
+    return res.json(row);
 });
 
 app.listen(PORT, () => {

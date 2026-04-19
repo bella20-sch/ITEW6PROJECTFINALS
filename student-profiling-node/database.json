@@ -579,7 +579,49 @@
       "subjectTitle": "Computer Programming 1"
     }
   ],
-  "classActivities": [],
-  "classActivitySubmissions": [],
-  "sectionMaterials": []
+  "classActivities": [
+    {
+      "classActivityID": 1,
+      "facultyID": 1,
+      "teachingLoadID": 1,
+      "courseID": 1,
+      "section": "4IT-B",
+      "subjectCode": "CCS101",
+      "subjectTitle": "Computer Programming 1",
+      "title": "Hello World lab",
+      "description": "Submit your program output.",
+      "deadline": "",
+      "allow_late": false,
+      "maxScore": 100,
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "gradingPeriod": "prelim",
+      "assessmentKind": "activity"
+    }
+  ],
+  "classActivitySubmissions": [
+    {
+      "submissionID": 1,
+      "classActivityID": 1,
+      "studentID": 1,
+      "content": "console.log('Hello');",
+      "submittedAt": "2026-01-02T00:00:00.000Z",
+      "score": 90,
+      "feedback": "Good work.",
+      "gradedAt": "2026-01-03T00:00:00.000Z"
+    }
+  ],
+  "sectionMaterials": [],
+  "facultyStudentPeriodGrades": [
+    {
+      "facultyPeriodGradeID": 1,
+      "teachingLoadID": 1,
+      "studentID": 1,
+      "schoolYear": "2025-2026",
+      "semester": 1,
+      "period": "prelim",
+      "attendancePct": 95,
+      "quizPct": 88,
+      "examPct": 85
+    }
+  ]
 }

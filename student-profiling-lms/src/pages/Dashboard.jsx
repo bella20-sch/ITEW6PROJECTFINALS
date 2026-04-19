@@ -150,11 +150,15 @@ export default function Dashboard() {
               <span className="dash-stat-tile-hint">{s.enrolled} enrolled</span>
             </span>
           </Link>
-          <Link to={lmsPath(base, '/courses')} className="dash-stat-tile dash-stat-tile--link">
+          <Link
+            to={lmsPath(base, isFaculty ? '/my-classes' : '/courses')}
+            className="dash-stat-tile dash-stat-tile--link"
+          >
             <span className="dash-stat-tile-icon"><BookOpen size={20} strokeWidth={2} /></span>
             <span className="dash-stat-tile-copy">
-              <span className="dash-stat-tile-value">{courses.length}</span>
-              <span className="dash-stat-tile-label">Courses</span>
+              <span className="dash-stat-tile-value">{isFaculty ? '—' : courses.length}</span>
+              <span className="dash-stat-tile-label">{isFaculty ? 'My classes' : 'Courses'}</span>
+              {isFaculty ? <span className="dash-stat-tile-hint">Sections you teach</span> : null}
             </span>
           </Link>
           <Link to={facultyHubPath} className="dash-stat-tile dash-stat-tile--link">
@@ -361,10 +365,14 @@ export default function Dashboard() {
           <h3>Reports & Queries</h3>
           <p>Run queries — basketball tryouts, programming contest, honor roll, and custom filters.</p>
         </Link>
-        <Link to={lmsPath(base, '/courses')} className="action-card">
+        <Link to={lmsPath(base, isFaculty ? '/my-classes' : '/courses')} className="action-card">
           <BookOpen size={28} />
-          <h3>Courses</h3>
-          <p>Manage BSIT, BSCS, BSIS and other CCS programs.</p>
+          <h3>{isFaculty ? 'My classes' : 'Courses'}</h3>
+          <p>
+            {isFaculty
+              ? 'Open each section to see students, lessons, activities, and term grades (prelim, midterm, finals).'
+              : 'Manage BSIT, BSCS, BSIS and other CCS programs.'}
+          </p>
         </Link>
         <Link to={facultyHubPath} className="action-card">
           <UserCircle size={28} />

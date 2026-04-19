@@ -25,6 +25,8 @@ export default function Workspace() {
     deadline: '',
     allow_late: false,
     maxScore: 100,
+    gradingPeriod: 'prelim',
+    assessmentKind: 'activity',
   })
   const [matForm, setMatForm] = useState({
     teachingLoadId: '',
@@ -247,6 +249,8 @@ export default function Workspace() {
                       deadline: actForm.deadline,
                       allow_late: actForm.allow_late,
                       maxScore: Number(actForm.maxScore) || 100,
+                      gradingPeriod: actForm.gradingPeriod,
+                      assessmentKind: actForm.assessmentKind,
                     },
                   })
                   setMsg('Activity posted for that section.')
@@ -257,6 +261,8 @@ export default function Workspace() {
                     deadline: '',
                     allow_late: false,
                     maxScore: 100,
+                    gradingPeriod: 'prelim',
+                    assessmentKind: 'activity',
                   })
                   await loadAll()
                 } catch (err) {
@@ -281,6 +287,30 @@ export default function Workspace() {
                   ))}
                 </select>
               </label>
+              <div className="workspace-form-row">
+                <label>
+                  Grading period
+                  <select
+                    value={actForm.gradingPeriod}
+                    onChange={(e) => setActForm((p) => ({ ...p, gradingPeriod: e.target.value }))}
+                  >
+                    <option value="prelim">Prelim</option>
+                    <option value="midterm">Midterm</option>
+                    <option value="finals">Finals</option>
+                  </select>
+                </label>
+                <label>
+                  Kind
+                  <select
+                    value={actForm.assessmentKind}
+                    onChange={(e) => setActForm((p) => ({ ...p, assessmentKind: e.target.value }))}
+                  >
+                    <option value="activity">Activity (20%)</option>
+                    <option value="quiz">Quiz (20%)</option>
+                    <option value="exam">Exam (50%)</option>
+                  </select>
+                </label>
+              </div>
               <label>
                 Title
                 <input
