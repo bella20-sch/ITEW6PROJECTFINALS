@@ -1,24 +1,20 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link, Navigate, useParams } from 'react-router-dom'
+import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { apiFetch } from '../lib/api'
 import { useLmsBase, lmsPath } from '../lib/lmsPaths'
+import FacultyStudentGradeCard from '../components/FacultyStudentGradeCard'
 import {
   ArrowLeft,
   Users,
   FileText,
   ClipboardList,
   BarChart3,
-  CheckCircle2,
-  Circle,
   ExternalLink,
+  ChevronRight,
 } from 'lucide-react'
 
-const PERIODS = [
-  { id: 'prelim', label: 'Prelim' },
-  { id: 'midterm', label: 'Midterm' },
-  { id: 'finals', label: 'Finals' },
-]
+const ALLOWED_TABS = new Set(['students', 'lessons', 'activities', 'grades'])
 
 const KIND_OPTIONS = [
   { value: 'activity', label: 'Activity (20%)' },
@@ -36,6 +32,7 @@ export default function FacultyClassSection() {
   const { teachingLoadId } = useParams()
   const tlId = Number(teachingLoadId)
   const base = useLmsBase()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { token, currentUser } = useAuth()
   const [tab, setTab] = useState('students')
   const [classroom, setClassroom] = useState(null)
@@ -81,6 +78,23 @@ export default function FacultyClassSection() {
   useEffect(() => {
     loadAll()
   }, [loadAll])
+
+  useEffect(() => {
+    const t = searchParams.get('tab')
+    if (t && ALLOWED_TABS.has(t)) setTab(t)
+  }, [searchParams])
+
+  const selectTab = (id) => {
+    setTab(id)
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.set('tab', id)
+        return next
+      },
+      { replace: true },
+    )
+  }
 
   const tl = classroom?.teachingLoad
 
@@ -250,7 +264,7 @@ export default function FacultyClassSection() {
             role="tab"
             aria-selected={tab === id}
             className={`faculty-class-tab ${tab === id ? 'is-active' : ''}`}
-            onClick={() => setTab(id)}
+            onClick={() => selectTab(id)}
           >
             <Icon size={18} aria-hidden />
             {label}
@@ -269,7 +283,7 @@ export default function FacultyClassSection() {
             <ul className="faculty-class-student-list">
               {roster.map((s) => (
                 <li key={s.studentID}>
-                  <Link to={lmsPath(base, `/students/${s.studentID}`)} className="faculty-class-student-link">
+                  <Link to={lmsPath(base, `/my-classes/${tlId}/students/${s.studentID}`)} className="faculty-class-student-link">
                     <span className="faculty-class-student-name">
                       {s.lastName}, {s.firstName}
                     </span>
@@ -397,57 +411,34 @@ export default function FacultyClassSection() {
             </form>
           </div>
 
-          <h3 className="faculty-class-subtitle">Posted items & submission status</h3>
+          <h3 className="faculty-class-subtitle">Posted items</h3>
+          <p className="muted small faculty-class-hint">
+            Open an item to see every student&rsquo;s submitted / not submitted status and scores. Grade submissions from{' '}
+            <Link to={lmsPath(base, '/workspace')}>Teaching Workspace</Link>.
+          </p>
           {!activities.length ? (
             <p className="muted">No activities yet.</p>
           ) : (
             <div className="faculty-class-act-list">
               {activities.map((a) => (
-                <article key={a.classActivityID ?? a.id} className="faculty-class-act-card">
-                  <header className="faculty-class-act-head">
+                <Link
+                  key={a.classActivityID ?? a.id}
+                  to={lmsPath(base, `/my-classes/${tlId}/activities/${a.classActivityID ?? a.id}`)}
+                  className="faculty-class-act-card faculty-class-act-card-link"
+                >
+                  <div className="faculty-class-act-head">
                     <div>
                       <h4>{a.title}</h4>
                       <p className="muted small">
-                        {String(a.assessmentKind || 'activity').toUpperCase()} · {String(a.gradingPeriod || 'prelim')} · Max {a.maxScore}
+                        {String(a.assessmentKind || 'activity').toUpperCase()} · {String(a.gradingPeriod || 'prelim')} · Max{' '}
+                        {a.maxScore}
                       </p>
                     </div>
-                  </header>
-                  <table className="faculty-class-roster-table">
-                    <thead>
-                      <tr>
-                        <th>Student</th>
-                        <th>Submitted</th>
-                        <th>Graded</th>
-                        <th>Score</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(a.rosterStatus || []).map((row) => (
-                        <tr key={row.studentID}>
-                          <td>{row.studentName}</td>
-                          <td>
-                            {row.submitted ? (
-                              <CheckCircle2 className="faculty-class-ico-ok" size={18} aria-label="Yes" />
-                            ) : (
-                              <Circle className="faculty-class-ico-no" size={18} aria-label="No" />
-                            )}
-                          </td>
-                          <td>
-                            {row.graded ? (
-                              <CheckCircle2 className="faculty-class-ico-ok" size={18} aria-label="Yes" />
-                            ) : (
-                              <Circle className="faculty-class-ico-no" size={18} aria-label="No" />
-                            )}
-                          </td>
-                          <td>{row.score != null ? row.score : '—'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  <p className="muted small">
-                    Grade submissions from <Link to={lmsPath(base, '/workspace')}>Teaching Workspace</Link>.
-                  </p>
-                </article>
+                    <span className="faculty-class-act-open">
+                      Roster <ChevronRight size={18} aria-hidden />
+                    </span>
+                  </div>
+                </Link>
               ))}
             </div>
           )}
@@ -466,202 +457,11 @@ export default function FacultyClassSection() {
           </p>
           <div className="faculty-grade-cards">
             {gradeRows.map((row) => (
-              <StudentGradeCard
-                key={row.studentID}
-                row={row}
-                busy={busy}
-                onSavePeriod={savePeriodGrades}
-                schoolYear={schoolYear}
-                semester={semester}
-              />
+              <FacultyStudentGradeCard key={row.studentID} row={row} busy={busy} onSavePeriod={savePeriodGrades} />
             ))}
           </div>
         </section>
       )}
     </div>
   )
-}
-
-function StudentGradeCard({ row, busy, onSavePeriod }) {
-  const [draft, setDraft] = useState(() => buildDraft(row))
-
-  useEffect(() => {
-    setDraft(buildDraft(row))
-  }, [row])
-
-  return (
-    <div className="faculty-grade-card">
-      <div className="faculty-grade-card-head">
-        <h3 className="faculty-grade-card-name">{row.studentName}</h3>
-        <div className="faculty-grade-avg-pill" aria-label="Semester average">
-          <span className="faculty-grade-avg-pill-label">Semester avg</span>
-          <span className="faculty-grade-avg-pill-value">{row.semesterAverage != null ? row.semesterAverage : '—'}</span>
-        </div>
-      </div>
-
-      <div className="faculty-grade-matrix-scroll">
-        <table className="faculty-grade-matrix">
-          <thead>
-            <tr>
-              <th scope="col" className="faculty-grade-matrix-corner">
-                Component
-              </th>
-              {PERIODS.map(({ id, label }) => (
-                <th key={id} scope="col" className="faculty-grade-matrix-period">
-                  {label}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <th scope="row">Activities (20%)</th>
-              {PERIODS.map(({ id }) => {
-                const p = row.periods[id] || {}
-                return (
-                  <td key={id}>
-                    <span className="faculty-grade-cell-read">{p.activityPct != null ? `${p.activityPct}%` : '—'}</span>
-                  </td>
-                )
-              })}
-            </tr>
-            <tr>
-              <th scope="row">Attendance (10%)</th>
-              {PERIODS.map(({ id }) => {
-                const d = draft[id] || { attendancePct: 0, quizPct: 0, examPct: 0 }
-                return (
-                  <td key={id}>
-                    <input
-                      type="number"
-                      min={0}
-                      max={100}
-                      className="faculty-grade-field"
-                      value={d.attendancePct}
-                      onChange={(e) =>
-                        setDraft((prev) => ({
-                          ...prev,
-                          [id]: { ...prev[id], attendancePct: e.target.value },
-                        }))
-                      }
-                    />
-                  </td>
-                )
-              })}
-            </tr>
-            <tr>
-              <th scope="row">
-                Quiz (20%)
-                <span className="faculty-grade-row-hint">Posted quizzes override manual</span>
-              </th>
-              {PERIODS.map(({ id }) => {
-                const p = row.periods[id] || {}
-                const d = draft[id] || { attendancePct: 0, quizPct: 0, examPct: 0 }
-                return (
-                  <td key={id}>
-                    {p.quizFromPostedActivities ? (
-                      <span className="faculty-grade-cell-read">{p.quizPct ?? '—'}%</span>
-                    ) : (
-                      <input
-                        type="number"
-                        min={0}
-                        max={100}
-                        className="faculty-grade-field"
-                        value={d.quizPct}
-                        onChange={(e) =>
-                          setDraft((prev) => ({
-                            ...prev,
-                            [id]: { ...prev[id], quizPct: e.target.value },
-                          }))
-                        }
-                      />
-                    )}
-                  </td>
-                )
-              })}
-            </tr>
-            <tr>
-              <th scope="row">
-                Exam (50%)
-                <span className="faculty-grade-row-hint">Posted exams override manual</span>
-              </th>
-              {PERIODS.map(({ id }) => {
-                const p = row.periods[id] || {}
-                const d = draft[id] || { attendancePct: 0, quizPct: 0, examPct: 0 }
-                return (
-                  <td key={id}>
-                    {p.examFromPostedActivities ? (
-                      <span className="faculty-grade-cell-read">{p.examPct ?? '—'}%</span>
-                    ) : (
-                      <input
-                        type="number"
-                        min={0}
-                        max={100}
-                        className="faculty-grade-field"
-                        value={d.examPct}
-                        onChange={(e) =>
-                          setDraft((prev) => ({
-                            ...prev,
-                            [id]: { ...prev[id], examPct: e.target.value },
-                          }))
-                        }
-                      />
-                    )}
-                  </td>
-                )
-              })}
-            </tr>
-            <tr className="faculty-grade-matrix-totals">
-              <th scope="row">Period total</th>
-              {PERIODS.map(({ id }) => {
-                const p = row.periods[id] || {}
-                return (
-                  <td key={id}>
-                    <span className="faculty-grade-total">{p.periodTotal != null ? p.periodTotal : '—'}</span>
-                  </td>
-                )
-              })}
-            </tr>
-            <tr className="faculty-grade-matrix-actions">
-              <th scope="row">Save changes</th>
-              {PERIODS.map(({ id, label }) => {
-                const d = draft[id] || { attendancePct: 0, quizPct: 0, examPct: 0 }
-                const saving = busy === `${row.studentID}-${id}`
-                return (
-                  <td key={id}>
-                    <button
-                      type="button"
-                      className="btn btn-outline faculty-grade-save-btn"
-                      disabled={saving}
-                      onClick={() =>
-                        onSavePeriod(row.studentID, id, {
-                          attendancePct: d.attendancePct,
-                          quizPct: d.quizPct,
-                          examPct: d.examPct,
-                        })
-                      }
-                    >
-                      {saving ? 'Saving…' : `Save ${label}`}
-                    </button>
-                  </td>
-                )
-              })}
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  )
-}
-
-function buildDraft(row) {
-  const out = {}
-  PERIODS.forEach(({ id }) => {
-    const p = row.periods[id] || {}
-    out[id] = {
-      attendancePct: p.attendancePct ?? 0,
-      quizPct: p.quizFromPostedActivities ? (p.quizPct ?? 0) : (p.quizManualPct ?? 0),
-      examPct: p.examFromPostedActivities ? (p.examPct ?? 0) : (p.examManualPct ?? 0),
-    }
-  })
-  return out
 }

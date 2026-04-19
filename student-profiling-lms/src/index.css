@@ -5666,9 +5666,150 @@ a {
   box-shadow: var(--shadow-sm);
 }
 
+.faculty-class-act-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
 .faculty-class-act-head h4 {
   margin: 0;
   font-size: 1.05rem;
+}
+
+.faculty-class-act-card-link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.faculty-class-act-card-link:hover {
+  border-color: var(--color-accent, #f97316);
+  box-shadow: var(--shadow-md);
+}
+
+.faculty-class-act-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  flex-shrink: 0;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--color-accent-dark);
+}
+
+.faculty-class-activity-page .faculty-class-activity-head,
+.faculty-class-student-page .faculty-class-student-head {
+  margin-bottom: 1.5rem;
+}
+
+.faculty-class-activity-title,
+.faculty-class-student-title {
+  margin: 0.35rem 0 0;
+  font-size: 1.65rem;
+  font-family: 'Outfit', sans-serif;
+}
+
+.faculty-class-activity-meta,
+.faculty-class-student-kicker {
+  margin: 0;
+  font-size: 0.88rem;
+}
+
+.faculty-class-activity-desc {
+  margin: 0.75rem 0 0;
+  max-width: 52rem;
+  line-height: 1.55;
+}
+
+.faculty-class-activity-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem 2rem;
+  margin: 1.25rem 0 0;
+  padding: 0;
+}
+
+.faculty-class-activity-facts dt {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+}
+
+.faculty-class-activity-facts dd {
+  margin: 0.2rem 0 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.faculty-class-activity-roster-section {
+  margin-top: 2rem;
+}
+
+.faculty-class-activity-table-wrap {
+  margin-top: 1rem;
+  overflow-x: auto;
+}
+
+.faculty-class-student-email {
+  margin: 0.25rem 0 0;
+}
+
+.faculty-class-student-term {
+  margin-bottom: 1.5rem;
+}
+
+.faculty-class-student-section {
+  margin-bottom: 2.25rem;
+}
+
+.faculty-class-student-act-list {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.faculty-class-student-act-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.15rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+}
+
+.faculty-class-student-act-title {
+  display: block;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.faculty-class-student-act-meta {
+  display: block;
+  margin-top: 0.2rem;
+}
+
+.faculty-class-student-act-status {
+  margin-top: 0.45rem;
+}
+
+.faculty-class-student-act-link {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  white-space: nowrap;
 }
 
 .faculty-class-roster-table {

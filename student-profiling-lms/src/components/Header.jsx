@@ -44,9 +44,13 @@ export default function Header({ onMenuClick, sidebarCollapsed, onToggleSidebarC
 
   const myClassesRouteTitle = /^\/(?:mis\/)?my-classes$/.test(path)
     ? 'My classes'
-    : /^\/(?:mis\/)?my-classes\/\d+$/.test(path)
-      ? 'Class section'
-      : null
+    : /^\/(?:mis\/)?my-classes\/\d+\/activities\/\d+$/.test(path)
+      ? 'Class activity'
+      : /^\/(?:mis\/)?my-classes\/\d+\/students\/\d+$/.test(path)
+        ? 'Student progress'
+        : /^\/(?:mis\/)?my-classes\/\d+$/.test(path)
+          ? 'Class section'
+          : null
 
   const toggleColorMode = useCallback(() => {
     const next = colorMode === 'dark' ? 'light' : 'dark'
