@@ -1,12 +1,13 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react'
-import { useParams, Link, useNavigate } from 'react-router-dom'
+import { useParams, Link, useNavigate, Navigate } from 'react-router-dom'
 import {
   User, Mail, Calendar, AlertTriangle, BookOpen, Briefcase, Heart, Users,
-  Sparkles, ArrowLeft, GraduationCap, Pencil, Trash2, Plus,
+  Sparkles, ArrowLeft, GraduationCap, Pencil, Trash2, Plus, LayoutGrid,
 } from 'lucide-react'
 import { useData } from '../context/DataContext'
 import { useAuth } from '../context/AuthContext'
 import { useLmsBase, lmsPath } from '../lib/lmsPaths'
+import { apiFetch } from '../lib/api'
 import ReqStar from '../components/ReqStar'
 import Modal from '../components/Modal'
 
@@ -272,14 +273,19 @@ export default function StudentProfile() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { crud, subCrud, profiles, courses, departments } = useData()
-  const { currentUser } = useAuth()
+  const { currentUser, token } = useAuth()
   const isAdmin = currentUser?.role === 'Admin'
+  const isStudent = currentUser?.role === 'Student'
   const base = useLmsBase()
+
+  const myStudentId = Number(currentUser?.studentID ?? currentUser?.id)
+  const viewingId = Number(id)
 
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
   const [subModal, setSubModal] = useState({ open: false, type: null, item: null })
   const [confirm, setConfirm] = useState({ open: false, title: '', message: '', onConfirm: null, danger: false })
+  const [enrolledLoads, setEnrolledLoads] = useState([])
 
   const student = profiles[Number(id)] || null
 
@@ -299,13 +305,44 @@ export default function StudentProfile() {
     return () => { cancelled = true }
   }, [id, crud.students, profiles])
 
+  useEffect(() => {
+    if (!isStudent || !token) {
+      setEnrolledLoads([])
+      return
+    }
+    let cancelled = false
+    apiFetch('/api/me/assignments', { token })
+      .then((data) => {
+        if (!cancelled) setEnrolledLoads(Array.isArray(data) ? data : [])
+      })
+      .catch(() => {
+        if (!cancelled) setEnrolledLoads([])
+      })
+    return () => { cancelled = true }
+  }, [isStudent, token])
+
+  if (isStudent && Number.isFinite(myStudentId)) {
+    if (!Number.isFinite(viewingId) || viewingId !== myStudentId) {
+      return <Navigate to={lmsPath(base, `/students/${myStudentId}`)} replace />
+    }
+  }
+
   const askConfirm = (title, message, onConfirm, danger = false) => {
     setConfirm({ open: true, title, message, onConfirm, danger })
   }
   const closeConfirm = () => setConfirm(c => ({ ...c, open: false }))
 
   if (loading) return <div className="page"><p className="muted">Loading student profile…</p></div>
-  if (!student) return <div className="page"><p>{loadError || 'Student not found.'} <Link to={lmsPath(base, '/students')}>Back</Link></p></div>
+  if (!student) {
+    return (
+      <div className="page">
+        <p>
+          {loadError || 'Student not found.'}{' '}
+          {isStudent ? <Link to="/">Back to dashboard</Link> : <Link to={lmsPath(base, '/students')}>Back</Link>}
+        </p>
+      </div>
+    )
+  }
 
   const fullName = `${student.firstName} ${student.middleName || ''} ${student.lastName} ${student.suffix || ''}`.trim()
   const course = courses.find(c => c.courseID === student.courseID)
@@ -374,7 +411,11 @@ export default function StudentProfile() {
   return (
     <div className="page">
       <div className="profile-toolbar">
-        <Link to={lmsPath(base, '/students')} className="back-link"><ArrowLeft size={18} /> Back to Students</Link>
+        {isStudent ? (
+          <Link to="/" className="back-link"><ArrowLeft size={18} /> Back to dashboard</Link>
+        ) : (
+          <Link to={lmsPath(base, '/students')} className="back-link"><ArrowLeft size={18} /> Back to Students</Link>
+        )}
         <div>
           {isAdmin && (
             <Link to={lmsPath(base, `/students/${id}/edit`)} className="btn btn-outline">
@@ -384,6 +425,47 @@ export default function StudentProfile() {
           {isAdmin && <button className="btn btn-danger" onClick={handleDeleteStudent}><Trash2 size={16} /> Delete</button>}
         </div>
       </div>
+
+      {isStudent && (
+        <section className="profile-enrolled" aria-labelledby="profile-enrolled-heading">
+          <div className="profile-enrolled-head">
+            <LayoutGrid size={22} strokeWidth={2} aria-hidden />
+            <h2 id="profile-enrolled-heading">Your section & subjects</h2>
+          </div>
+          <p className="profile-enrolled-intro muted">
+            Based on your enrollment record: <strong>{course?.courseCode || '—'}</strong> · Section{' '}
+            <strong>{student.section || '—'}</strong>
+            {student.yearLevel ? (
+              <>
+                {' '}
+                · Year <strong>{student.yearLevel}</strong>
+              </>
+            ) : null}
+            . Listed subjects are the classes offered to your section this term.
+          </p>
+          {!enrolledLoads.length ? (
+            <p className="muted profile-enrolled-empty">No subjects are linked to your section yet. Your instructor will add them in the workspace.</p>
+          ) : (
+            <ul className="profile-enrolled-list">
+              {enrolledLoads.map((tl) => {
+                const prog = courses.find((c) => Number(c.courseID) === Number(tl.courseID))
+                return (
+                  <li key={tl.teachingLoadId ?? tl.id} className="profile-enrolled-item">
+                    <div className="profile-enrolled-subject">{tl.subjectTitle || 'Subject'}</div>
+                    <div className="profile-enrolled-meta">
+                      <span className="profile-enrolled-code">{tl.subjectCode || '—'}</span>
+                      <span>
+                        {prog?.courseCode || '—'} · Section {tl.section}
+                      </span>
+                      <span className="profile-enrolled-prog">{prog?.courseName}</span>
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </section>
+      )}
 
       <div className="profile-header">
         <div className="profile-avatar">

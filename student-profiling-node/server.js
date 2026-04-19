@@ -254,6 +254,11 @@ app.delete('/api/students/:studentId/:collection/:id', authenticate, (req, res) 
 // --- STUDENTS ENDPOINTS ---
 app.get('/api/students', authenticate, (req, res) => {
     const db = getDb();
+    if (req.user?.role === 'Student') {
+        const me = db.students.find((s) => s.studentID === Number(req.user.id));
+        const row = me ? omitPassword(me) : null;
+        return res.json(row ? [row] : []);
+    }
     let studs = [...db.students];
     const { search, section, courseID, skill, studentType } = req.query;
 
@@ -288,6 +293,9 @@ app.get('/api/students/:id', authenticate, (req, res) => {
     const id = Number(req.params.id);
     const student = db.students.find(s => s.studentID === id);
     if (!student) return res.status(404).json({ error: 'Student not found' });
+    if (req.user?.role === 'Student' && Number(req.user.id) !== id) {
+        return res.status(403).json({ error: 'You can only view your own profile.' });
+    }
 
     return res.json({
         ...omitPassword(student),

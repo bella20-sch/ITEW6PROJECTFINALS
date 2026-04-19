@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { Search, ChevronRight, Plus, Users, UserCheck, BookOpen, Sparkles, GraduationCap } from 'lucide-react'
 import { useData } from '../context/DataContext'
 import { useAuth } from '../context/AuthContext'
@@ -11,6 +11,13 @@ export default function Students() {
   const { currentUser } = useAuth()
   const isAdmin = currentUser?.role === 'Admin'
   const base = useLmsBase()
+
+  if (currentUser?.role === 'Student') {
+    const sid = Number(currentUser?.studentID ?? currentUser?.id)
+    if (Number.isFinite(sid)) {
+      return <Navigate to={lmsPath(base, `/students/${sid}`)} replace />
+    }
+  }
 
   const [search, setSearch] = useState('')
   const [courseFilter, setCourseFilter] = useState('')

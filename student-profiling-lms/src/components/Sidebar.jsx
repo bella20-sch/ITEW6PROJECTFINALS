@@ -22,9 +22,11 @@ export default function Sidebar({ open, onClose, collapsed }) {
       { path: 'workspace', icon: ClipboardList, label: 'Teaching Workspace' },
     ]
   } else if (currentUser?.role === 'Student') {
+    const sid = currentUser?.studentID ?? currentUser?.id
+    const profilePath = sid != null && sid !== '' ? `students/${sid}` : 'students'
     items = [
       { path: '', icon: LayoutDashboard, label: 'Dashboard' },
-      { path: 'students', icon: Users, label: 'My Profile' },
+      { path: profilePath, icon: Users, label: 'My Profile', end: true },
       { path: 'workspace', icon: ClipboardList, label: 'My Activities' },
     ]
   }
@@ -41,12 +43,12 @@ export default function Sidebar({ open, onClose, collapsed }) {
         <span className="sidebar-title">Student Profiling LMS</span>
       </div>
       <nav className="sidebar-nav">
-        {items.map(({ path, icon: Icon, label }) => (
+        {items.map(({ path, icon: Icon, label, end }) => (
           <NavLink
             key={path}
             to={path === '' ? '/' : `/${path}`}
             className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
-            end={path === ''}
+            end={end ?? path === ''}
             onClick={onClose}
             title={label}
           >
