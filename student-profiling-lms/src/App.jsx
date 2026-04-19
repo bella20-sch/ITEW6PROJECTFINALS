@@ -17,6 +17,8 @@ import RequireAdmin from './components/RequireAdmin'
 import Workspace from './pages/Workspace'
 import FacultyMyClasses from './pages/FacultyMyClasses'
 import FacultyClassSection from './pages/FacultyClassSection'
+import FacultyClassActivity from './pages/FacultyClassActivity'
+import FacultyClassStudent from './pages/FacultyClassStudent'
 
 export default function App() {
   return (
@@ -102,6 +104,8 @@ export default function App() {
         <Route path="faculty" element={<Faculty />} />
         <Route path="reports" element={<Reports />} />
         <Route path="workspace" element={<Workspace />} />
+        <Route path="my-classes/:teachingLoadId/activities/:activityId" element={<FacultyClassActivity />} />
+        <Route path="my-classes/:teachingLoadId/students/:studentId" element={<FacultyClassStudent />} />
         <Route path="my-classes/:teachingLoadId" element={<FacultyClassSection />} />
         <Route path="my-classes" element={<FacultyMyClasses />} />
       </Route>
