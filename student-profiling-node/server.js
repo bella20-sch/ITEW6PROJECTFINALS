@@ -316,8 +316,8 @@ app.get('/api/meta/:type', authenticate, (req, res) => {
 });
 
 app.post('/api/meta/:type', authenticate, (req, res) => {
-    if (req.user?.role === 'Faculty') {
-        return res.status(403).json({ message: 'Faculty cannot modify directory data.' });
+    if (req.user?.role !== 'Admin') {
+        return res.status(403).json({ message: 'Only administrators can create directory records.' });
     }
     const db = getDb();
     const type = req.params.type;
@@ -335,6 +335,9 @@ app.post('/api/meta/:type', authenticate, (req, res) => {
 
 app.put('/api/meta/:type/:id', authenticate, (req, res) => {
     const { type, id } = req.params;
+    if (req.user?.role === 'Student') {
+        return res.status(403).json({ message: 'Not allowed.' });
+    }
     if (req.user?.role === 'Faculty') {
         if (type !== 'faculty' || Number(id) !== Number(req.user.id)) {
             return res.status(403).json({ message: 'You can only update your own faculty profile.' });
@@ -360,8 +363,8 @@ app.put('/api/meta/:type/:id', authenticate, (req, res) => {
 });
 
 app.delete('/api/meta/:type/:id', authenticate, (req, res) => {
-    if (req.user?.role === 'Faculty') {
-        return res.status(403).json({ message: 'Faculty cannot delete directory records.' });
+    if (req.user?.role !== 'Admin') {
+        return res.status(403).json({ message: 'Only administrators can delete directory records.' });
     }
     const db = getDb();
     const { type, id } = req.params;
@@ -401,6 +404,10 @@ app.post('/api/students/:studentId/:collection', authenticate, (req, res) => {
   const meta = subCollections[collection];
   if (!meta) return res.status(404).json({ error: 'Unknown collection' });
   const db = getDb();
+  const sid = Number(studentId);
+  if (req.user?.role === 'Student' && Number(req.user.id) !== sid) {
+    return res.status(403).json({ message: 'You can only update your own profile.' });
+  }
   const facCheck = assertFacultyMayAccessStudent(db, req, studentId);
   if (!facCheck.ok) return res.status(facCheck.status).json({ error: facCheck.msg });
   if (req.user?.role === 'Faculty') {
@@ -419,6 +426,10 @@ app.put('/api/students/:studentId/:collection/:id', authenticate, (req, res) => 
   const meta = subCollections[collection];
   if (!meta) return res.status(404).json({ error: 'Unknown collection' });
   const db = getDb();
+  const sid = Number(studentId);
+  if (req.user?.role === 'Student' && Number(req.user.id) !== sid) {
+    return res.status(403).json({ message: 'You can only update your own profile.' });
+  }
   const facCheck = assertFacultyMayAccessStudent(db, req, studentId);
   if (!facCheck.ok) return res.status(facCheck.status).json({ error: facCheck.msg });
   if (req.user?.role === 'Faculty') {
@@ -436,6 +447,10 @@ app.delete('/api/students/:studentId/:collection/:id', authenticate, (req, res) 
   const meta = subCollections[collection];
   if (!meta) return res.status(404).json({ error: 'Unknown collection' });
   const db = getDb();
+  const sid = Number(studentId);
+  if (req.user?.role === 'Student' && Number(req.user.id) !== sid) {
+    return res.status(403).json({ message: 'You can only update your own profile.' });
+  }
   const facCheck = assertFacultyMayAccessStudent(db, req, studentId);
   if (!facCheck.ok) return res.status(facCheck.status).json({ error: facCheck.msg });
   if (req.user?.role === 'Faculty') {
@@ -520,8 +535,8 @@ app.get('/api/students/:id', authenticate, (req, res) => {
 });
 
 app.post('/api/students', authenticate, (req, res) => {
-    if (req.user?.role === 'Faculty') {
-        return res.status(403).json({ message: 'Faculty cannot create student records.' });
+    if (req.user?.role !== 'Admin') {
+        return res.status(403).json({ message: 'Only administrators can create student records.' });
     }
     const db = getDb();
     const nextId = (db.students.length > 0 ? Math.max(...db.students.map(s => s.studentID)) : 0) + 1;
@@ -536,6 +551,11 @@ app.post('/api/students', authenticate, (req, res) => {
 app.put('/api/students/:id', authenticate, (req, res) => {
     if (req.user?.role === 'Faculty') {
         return res.status(403).json({ message: 'Faculty cannot edit student directory records.' });
+    }
+    if (req.user?.role === 'Student') {
+        return res.status(403).json({
+            message: 'Students cannot edit full directory records here. Use profile sections or contact MIS.',
+        });
     }
     const db = getDb();
     const id = Number(req.params.id);
@@ -556,8 +576,8 @@ app.put('/api/students/:id', authenticate, (req, res) => {
 });
 
 app.delete('/api/students/:id', authenticate, (req, res) => {
-    if (req.user?.role === 'Faculty') {
-        return res.status(403).json({ message: 'Faculty cannot delete students.' });
+    if (req.user?.role !== 'Admin') {
+        return res.status(403).json({ message: 'Only administrators can delete student records.' });
     }
     const db = getDb();
     const id = Number(req.params.id);
@@ -792,7 +812,10 @@ app.get('/api/me/activities', authenticate, (req, res) => {
     const uid = Number(req.user?.id);
     const students = db.students || [];
     if (role === 'Faculty') {
-        const acts = (db.classActivities || []).filter((a) => Number(a.facultyID) === uid);
+        const myLoadIds = new Set(
+            (db.teachingLoads || []).filter((t) => Number(t.facultyID) === uid).map((t) => Number(t.teachingLoadID)),
+        );
+        const acts = (db.classActivities || []).filter((a) => myLoadIds.has(Number(a.teachingLoadID)));
         const subs = db.classActivitySubmissions || [];
         const out = acts.map((a) => {
             const n = normActivityFields(a);
