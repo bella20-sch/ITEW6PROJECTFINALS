@@ -53,7 +53,7 @@ export function AuthProvider({ children }) {
         const res = await apiFetch('/api/auth/login', { method: 'POST', body: { email, password } })
         setToken(res.token || '')
         setCurrentUser(res.user || null)
-        return { ok: true }
+        return { ok: true, user: res.user || null }
       } catch (e) {
         return { ok: false, error: e?.message || 'Login failed.' }
       }

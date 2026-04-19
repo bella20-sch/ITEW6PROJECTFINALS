@@ -8,11 +8,13 @@ import { getTheme, setTheme } from '../lib/theme'
 const pageTitles = {
   '/': 'Dashboard',
   '/students': 'Students',
+  '/students/new': 'Add student',
   '/departments': 'Departments',
   '/courses': 'Courses',
   '/faculty': 'Faculty',
   '/reports': 'Reports & Queries',
-  '/admin': 'MIS/Admin',
+  '/workspace': 'Workspace',
+  '/provision': 'Account provisioning',
 }
 
 export default function Header({ onMenuClick, sidebarCollapsed, onToggleSidebarCollapse }) {
@@ -24,12 +26,28 @@ export default function Header({ onMenuClick, sidebarCollapsed, onToggleSidebarC
   const [colorMode, setColorMode] = useState(() => getTheme())
   const path = location.pathname
 
+  const appPath = path.startsWith('/mis')
+    ? path === '/mis'
+      ? '/'
+      : path.slice(4) || '/'
+    : path
+
+  const isStudentProfile = /^\/(?:mis\/)?students\/\d+$/.test(path)
+  const isStudentEdit = /^\/(?:mis\/)?students\/\d+\/edit$/.test(path)
+
   const toggleColorMode = useCallback(() => {
     const next = colorMode === 'dark' ? 'light' : 'dark'
     setTheme(next)
     setColorMode(next)
   }, [colorMode])
-  const title = path.startsWith('/students/') ? 'Student Profile' : pageTitles[path] || 'Student Profiling LMS'
+  const title =
+    path === '/mis'
+      ? 'MIS dashboard'
+      : isStudentProfile
+        ? 'Student profile'
+        : isStudentEdit
+          ? 'Edit student profile'
+          : pageTitles[appPath] || pageTitles[path] || 'Student Profiling LMS'
 
   const userDisplayName = currentUser
     ? [currentUser.firstName, currentUser.lastName].filter(Boolean).join(' ').trim() ||

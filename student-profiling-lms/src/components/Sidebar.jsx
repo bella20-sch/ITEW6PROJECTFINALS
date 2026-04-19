@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, Users, BookOpen, UserCircle, FileBarChart, X, Shield, ClipboardList } from 'lucide-react'
+import { LayoutDashboard, Users, BookOpen, UserCircle, FileBarChart, X, ClipboardList } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
 const navItems = [
@@ -13,9 +13,7 @@ const navItems = [
 export default function Sidebar({ open, onClose, collapsed }) {
   const { currentUser } = useAuth()
   let items = navItems
-  if (currentUser?.role === 'Admin') {
-    items = [...navItems, { path: 'admin', icon: Shield, label: 'MIS/Admin' }]
-  } else if (currentUser?.role === 'Faculty') {
+  if (currentUser?.role === 'Faculty') {
     items = [
       { path: '', icon: LayoutDashboard, label: 'Dashboard' },
       { path: 'students', icon: Users, label: 'My Students' },

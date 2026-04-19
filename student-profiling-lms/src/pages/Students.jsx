@@ -3,12 +3,14 @@ import { Link } from 'react-router-dom'
 import { Search, ChevronRight, Plus, Users, UserCheck, BookOpen, Sparkles, GraduationCap } from 'lucide-react'
 import { useData } from '../context/DataContext'
 import { useAuth } from '../context/AuthContext'
+import { useLmsBase, lmsPath } from '../lib/lmsPaths'
 import FilterDropdown from '../components/FilterDropdown'
 
 export default function Students() {
   const { students, courses, departments } = useData()
   const { currentUser } = useAuth()
   const isAdmin = currentUser?.role === 'Admin'
+  const base = useLmsBase()
 
   const [search, setSearch] = useState('')
   const [courseFilter, setCourseFilter] = useState('')
@@ -98,7 +100,7 @@ export default function Students() {
       <div className="students-page-header">
         {isAdmin && (
           <div className="students-page-title-row students-page-title-row--faculty-toolbar">
-            <Link to="/students/new" className="btn btn-primary">
+            <Link to={lmsPath(base, '/students/new')} className="btn btn-primary">
               <Plus size={18} /> Add Student
             </Link>
           </div>
@@ -183,7 +185,7 @@ export default function Students() {
         {filtered.map(student => {
           const course = courses.find(c => c.courseID === student.courseID)
           return (
-            <Link key={student.studentID} to={`/students/${student.studentID}`} className="student-card">
+            <Link key={student.studentID} to={lmsPath(base, `/students/${student.studentID}`)} className="student-card">
               <div className="student-avatar">
                 {student.photo
                   ? <img src={student.photo} alt={student.firstName} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />

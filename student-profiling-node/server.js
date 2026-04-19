@@ -13,8 +13,15 @@ app.use(cors());
 /* Default json limit is 100kb — base64 photos (students/faculty) exceed that and the body is rejected. */
 app.use(express.json({ limit: '15mb' }));
 
-// Load database helper
-const getDb = () => JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
+// Load database helper (workspace collections optional in older JSON files)
+const getDb = () => {
+    const db = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
+    if (!db.teachingLoads) db.teachingLoads = [];
+    if (!db.classActivities) db.classActivities = [];
+    if (!db.classActivitySubmissions) db.classActivitySubmissions = [];
+    if (!db.sectionMaterials) db.sectionMaterials = [];
+    return db;
+};
 const saveDb = (data) => fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf8');
 
 const omitPassword = (row) => {
@@ -42,15 +49,100 @@ const requireAdmin = (req, res, next) => {
     return res.status(403).json({ message: 'Admin only.' });
 };
 
+const requireFaculty = (req, res, next) => {
+    if (req.user?.role === 'Faculty') return next();
+    return res.status(403).json({ message: 'Faculty only.' });
+};
+
+const requireStudent = (req, res, next) => {
+    if (req.user?.role === 'Student') return next();
+    return res.status(403).json({ message: 'Student only.' });
+};
+
+const studentMatchesLoad = (student, load) => {
+    if (!student || !load) return false;
+    return (
+        Number(student.courseID) === Number(load.courseID) &&
+        String(student.section || '').trim() === String(load.section || '').trim()
+    );
+};
+
+const nextAutoId = (arr, idKey) =>
+    Array.isArray(arr) && arr.length ? Math.max(...arr.map((i) => Number(i[idKey]) || 0)) + 1 : 1;
+
+const normEmail = (v) => String(v || '').trim().toLowerCase();
+
 // --- AUTH ROUTE ---
 app.post('/api/auth/login', (req, res) => {
     const { email, password } = req.body;
+    const em = normEmail(email);
     const db = getDb();
-    const admin = db.admins.find(a => a.email === email && a.password === password);
+
+    const admin = db.admins.find((a) => normEmail(a.email) === em && a.password === password);
     if (admin) {
-        const token = jwt.sign({ id: admin.adminID, role: 'Admin', email: admin.email }, SECRET_KEY, { expiresIn: '1d' });
-        return res.json({ token, user: { id: admin.adminID, name: admin.firstName, role: 'Admin' } });
+        const token = jwt.sign(
+            { id: admin.adminID, role: 'Admin', email: admin.email },
+            SECRET_KEY,
+            { expiresIn: '1d' },
+        );
+        return res.json({
+            token,
+            user: {
+                id: admin.adminID,
+                role: 'Admin',
+                email: admin.email,
+                firstName: admin.firstName,
+                lastName: admin.lastName,
+                name: [admin.firstName, admin.lastName].filter(Boolean).join(' ').trim(),
+            },
+        });
     }
+
+    const faculty = db.faculty.find(
+        (f) => normEmail(f.email) === em && f.password && String(f.password) === String(password),
+    );
+    if (faculty) {
+        const token = jwt.sign(
+            { id: faculty.facultyID, role: 'Faculty', email: faculty.email },
+            SECRET_KEY,
+            { expiresIn: '1d' },
+        );
+        return res.json({
+            token,
+            user: {
+                id: faculty.facultyID,
+                role: 'Faculty',
+                email: faculty.email,
+                firstName: faculty.firstName,
+                lastName: faculty.lastName,
+                name: [faculty.firstName, faculty.lastName].filter(Boolean).join(' ').trim(),
+            },
+        });
+    }
+
+    const student = db.students.find(
+        (s) => normEmail(s.email) === em && s.password && String(s.password) === String(password),
+    );
+    if (student) {
+        const token = jwt.sign(
+            { id: student.studentID, role: 'Student', email: student.email },
+            SECRET_KEY,
+            { expiresIn: '1d' },
+        );
+        return res.json({
+            token,
+            user: {
+                id: student.studentID,
+                studentID: student.studentID,
+                role: 'Student',
+                email: student.email,
+                firstName: student.firstName,
+                lastName: student.lastName,
+                name: [student.firstName, student.lastName].filter(Boolean).join(' ').trim(),
+            },
+        });
+    }
+
     return res.status(401).json({ message: 'Invalid credentials' });
 });
 
@@ -249,6 +341,9 @@ app.delete('/api/students/:id', authenticate, (req, res) => {
     db.skills = db.skills.filter(sk => sk.studentID !== id);
     db.affiliations = db.affiliations.filter(af => af.studentID !== id);
     db.violations = db.violations.filter(v => v.studentID !== id);
+    if (db.classActivitySubmissions) {
+        db.classActivitySubmissions = db.classActivitySubmissions.filter((x) => Number(x.studentID) !== id);
+    }
     saveDb(db);
     return res.json({ ok: true });
 });
@@ -386,7 +481,293 @@ app.post('/api/admin/faculty', authenticate, requireAdmin, (req, res) => {
     return res.status(201).json(omitPassword(newFaculty));
 });
 
+// --- LMS workspace: teaching loads, class activities, materials (faculty / student) ---
+
+app.get('/api/me/assignments', authenticate, (req, res) => {
+    const db = getDb();
+    const role = req.user?.role;
+    const uid = Number(req.user?.id);
+    const students = db.students || [];
+    if (role === 'Faculty') {
+        const list = (db.teachingLoads || []).filter((t) => Number(t.facultyID) === uid);
+        const out = list.map((t) => {
+            const roster = students
+                .filter((s) => studentMatchesLoad(s, t))
+                .map(omitPassword);
+            return {
+                id: t.teachingLoadID,
+                teachingLoadId: t.teachingLoadID,
+                courseID: t.courseID,
+                section: t.section,
+                subjectCode: t.subjectCode || '',
+                subjectTitle: t.subjectTitle || '',
+                displayLabel: `${t.subjectTitle || 'Subject'} (${t.subjectCode || 'CODE'}) · Section ${t.section || '—'}`,
+                students: roster,
+            };
+        });
+        return res.json(out);
+    }
+    if (role === 'Student') {
+        const me = students.find((s) => s.studentID === uid);
+        const list = (db.teachingLoads || []).filter((tl) => me && studentMatchesLoad(me, tl));
+        const out = list.map((t) => ({
+            id: t.teachingLoadID,
+            teachingLoadId: t.teachingLoadID,
+            courseID: t.courseID,
+            section: t.section,
+            subjectCode: t.subjectCode || '',
+            subjectTitle: t.subjectTitle || '',
+            displayLabel: `${t.subjectTitle || 'Subject'} (${t.subjectCode || 'CODE'}) · Section ${t.section || '—'}`,
+        }));
+        return res.json(out);
+    }
+    return res.json([]);
+});
+
+app.post('/api/faculty/teaching-loads', authenticate, requireFaculty, (req, res) => {
+    const db = getDb();
+    const fid = Number(req.user.id);
+    const f = db.faculty.find((x) => x.facultyID === fid);
+    if (!f || !f.courseID || !String(f.section || '').trim()) {
+        return res.status(400).json({ message: 'Your profile must have course and section set (MIS can update faculty).' });
+    }
+    const subjectCode = String(req.body?.subjectCode || '').trim();
+    const subjectTitle = String(req.body?.subjectTitle || '').trim();
+    if (!subjectCode || !subjectTitle) {
+        return res.status(400).json({ message: 'Subject code and title are required.' });
+    }
+    const arr = db.teachingLoads;
+    const row = {
+        teachingLoadID: nextAutoId(arr, 'teachingLoadID'),
+        facultyID: fid,
+        courseID: Number(f.courseID),
+        section: String(f.section).trim(),
+        subjectCode,
+        subjectTitle,
+    };
+    arr.push(row);
+    saveDb(db);
+    return res.status(201).json({
+        id: row.teachingLoadID,
+        teachingLoadId: row.teachingLoadID,
+        ...row,
+        displayLabel: `${subjectTitle} (${subjectCode}) · Section ${row.section}`,
+        students: [],
+    });
+});
+
+app.get('/api/me/activities', authenticate, (req, res) => {
+    const db = getDb();
+    const role = req.user?.role;
+    const uid = Number(req.user?.id);
+    const students = db.students || [];
+    if (role === 'Faculty') {
+        const acts = (db.classActivities || []).filter((a) => Number(a.facultyID) === uid);
+        const subs = db.classActivitySubmissions || [];
+        const out = acts.map((a) => {
+            const related = subs.filter((s) => Number(s.classActivityID) === Number(a.classActivityID));
+            const submissions = related.map((sub) => {
+                const st = students.find((x) => x.studentID === sub.studentID);
+                return {
+                    ...sub,
+                    studentName: st ? `${st.firstName} ${st.lastName}`.trim() : `Student #${sub.studentID}`,
+                };
+            });
+            return {
+                ...a,
+                id: a.classActivityID,
+                submissions,
+            };
+        });
+        return res.json(out);
+    }
+    if (role === 'Student') {
+        const me = students.find((s) => s.studentID === uid);
+        if (!me) return res.json([]);
+        const loadIds = new Set(
+            (db.teachingLoads || []).filter((tl) => studentMatchesLoad(me, tl)).map((t) => Number(t.teachingLoadID)),
+        );
+        const acts = (db.classActivities || []).filter((a) => loadIds.has(Number(a.teachingLoadID)));
+        const subs = db.classActivitySubmissions || [];
+        const out = acts.map((a) => {
+            const my = subs.find(
+                (s) => Number(s.classActivityID) === Number(a.classActivityID) && Number(s.studentID) === uid,
+            );
+            return { ...a, id: a.classActivityID, mySubmission: my || null };
+        });
+        return res.json(out);
+    }
+    return res.json([]);
+});
+
+app.get('/api/me/materials', authenticate, (req, res) => {
+    const db = getDb();
+    const role = req.user?.role;
+    const uid = Number(req.user?.id);
+    const students = db.students || [];
+    const mapMaterial = (m, tl) => ({
+        ...m,
+        id: m.sectionMaterialID,
+        teachingLoadId: m.teachingLoadID,
+        subjectCode: tl?.subjectCode || '',
+        subjectTitle: tl?.subjectTitle || '',
+        courseID: m.courseID,
+        section: m.section,
+    });
+    if (role === 'Faculty') {
+        const loads = db.teachingLoads || [];
+        const list = (db.sectionMaterials || []).filter((m) => Number(m.facultyID) === uid);
+        const out = list.map((m) => {
+            const tl = loads.find((t) => Number(t.teachingLoadID) === Number(m.teachingLoadID));
+            return mapMaterial(m, tl);
+        });
+        return res.json(out);
+    }
+    if (role === 'Student') {
+        const me = students.find((s) => s.studentID === uid);
+        if (!me) return res.json([]);
+        const loadIds = new Set(
+            (db.teachingLoads || []).filter((tl) => studentMatchesLoad(me, tl)).map((t) => Number(t.teachingLoadID)),
+        );
+        const list = (db.sectionMaterials || []).filter((m) => loadIds.has(Number(m.teachingLoadID)));
+        const loads = db.teachingLoads || [];
+        const out = list.map((m) => {
+            const tl = loads.find((t) => Number(t.teachingLoadID) === Number(m.teachingLoadID));
+            return mapMaterial(m, tl);
+        });
+        return res.json(out);
+    }
+    return res.json([]);
+});
+
+app.post('/api/faculty/activities', authenticate, requireFaculty, (req, res) => {
+    const db = getDb();
+    const fid = Number(req.user.id);
+    const teachingLoadId = Number(req.body?.teachingLoadId || req.body?.teachingLoadID);
+    const tl = (db.teachingLoads || []).find((t) => Number(t.teachingLoadID) === teachingLoadId);
+    if (!tl || Number(tl.facultyID) !== fid) {
+        return res.status(400).json({ message: 'Invalid teaching assignment.' });
+    }
+    const title = String(req.body?.title || '').trim();
+    if (!title) return res.status(400).json({ message: 'Title is required.' });
+    const arr = db.classActivities;
+    const row = {
+        classActivityID: nextAutoId(arr, 'classActivityID'),
+        facultyID: fid,
+        teachingLoadID: teachingLoadId,
+        courseID: Number(tl.courseID),
+        section: tl.section,
+        subjectCode: tl.subjectCode || '',
+        subjectTitle: tl.subjectTitle || '',
+        title,
+        description: String(req.body?.description || ''),
+        deadline: req.body?.deadline ? String(req.body.deadline) : '',
+        allow_late: !!req.body?.allow_late,
+        maxScore: Number(req.body?.maxScore) > 0 ? Number(req.body.maxScore) : 100,
+        createdAt: new Date().toISOString(),
+    };
+    arr.push(row);
+    saveDb(db);
+    return res.status(201).json({ ...row, id: row.classActivityID, submissions: [] });
+});
+
+app.post('/api/faculty/materials', authenticate, requireFaculty, (req, res) => {
+    const db = getDb();
+    const fid = Number(req.user.id);
+    const teachingLoadId = Number(req.body?.teachingLoadId || req.body?.teachingLoadID);
+    const tl = (db.teachingLoads || []).find((t) => Number(t.teachingLoadID) === teachingLoadId);
+    if (!tl || Number(tl.facultyID) !== fid) {
+        return res.status(400).json({ message: 'Invalid teaching assignment.' });
+    }
+    const title = String(req.body?.title || '').trim();
+    if (!title) return res.status(400).json({ message: 'Title is required.' });
+    const arr = db.sectionMaterials;
+    const row = {
+        sectionMaterialID: nextAutoId(arr, 'sectionMaterialID'),
+        facultyID: fid,
+        teachingLoadID: teachingLoadId,
+        courseID: Number(tl.courseID),
+        section: tl.section,
+        title,
+        content: String(req.body?.content || ''),
+        link: String(req.body?.link || '').trim(),
+        postedAt: new Date().toISOString(),
+    };
+    arr.push(row);
+    saveDb(db);
+    return res.status(201).json({ ...row, id: row.sectionMaterialID });
+});
+
+app.post('/api/student/activities/:id/submit', authenticate, requireStudent, (req, res) => {
+    const db = getDb();
+    const sid = Number(req.user.id);
+    const actId = Number(req.params.id);
+    const me = db.students.find((s) => s.studentID === sid);
+    const act = (db.classActivities || []).find((a) => Number(a.classActivityID) === actId);
+    if (!act || !me) return res.status(404).json({ message: 'Activity not found.' });
+    const tl = (db.teachingLoads || []).find((t) => Number(t.teachingLoadID) === Number(act.teachingLoadID));
+    if (!tl || !studentMatchesLoad(me, tl)) {
+        return res.status(403).json({ message: 'You are not in this class section.' });
+    }
+    const content = String(req.body?.content || '').trim();
+    if (!content) return res.status(400).json({ message: 'Submission text is required.' });
+    const arr = db.classActivitySubmissions;
+    let sub = arr.find((s) => Number(s.classActivityID) === actId && Number(s.studentID) === sid);
+    if (sub && sub.score != null && sub.score !== '') {
+        return res.status(400).json({ message: 'This activity is already graded.' });
+    }
+    const now = new Date().toISOString();
+    if (sub) {
+        sub.content = content;
+        sub.submittedAt = now;
+    } else {
+        sub = {
+            submissionID: nextAutoId(arr, 'submissionID'),
+            classActivityID: actId,
+            studentID: sid,
+            content,
+            submittedAt: now,
+            score: null,
+            feedback: '',
+            gradedAt: null,
+        };
+        arr.push(sub);
+    }
+    saveDb(db);
+    return res.json(sub);
+});
+
+app.post('/api/faculty/activities/:id/grade', authenticate, requireFaculty, (req, res) => {
+    const db = getDb();
+    const fid = Number(req.user.id);
+    const actId = Number(req.params.id);
+    const act = (db.classActivities || []).find((a) => Number(a.classActivityID) === actId);
+    if (!act || Number(act.facultyID) !== fid) {
+        return res.status(403).json({ message: 'Not allowed.' });
+    }
+    const studentID = Number(req.body?.studentID);
+    if (!studentID) return res.status(400).json({ message: 'studentID required.' });
+    const arr = db.classActivitySubmissions || [];
+    const sub = arr.find((s) => Number(s.classActivityID) === actId && Number(s.studentID) === studentID);
+    if (!sub) return res.status(404).json({ message: 'No submission from this student.' });
+    const max = Number(act.maxScore) > 0 ? Number(act.maxScore) : 100;
+    let score = req.body?.score;
+    if (score === '' || score === null || score === undefined) {
+        return res.status(400).json({ message: 'Score is required to grade.' });
+    }
+    score = Number(score);
+    if (Number.isNaN(score) || score < 0 || score > max) {
+        return res.status(400).json({ message: `Score must be between 0 and ${max}.` });
+    }
+    sub.score = score;
+    sub.feedback = String(req.body?.feedback || '');
+    sub.gradedAt = new Date().toISOString();
+    saveDb(db);
+    return res.json(sub);
+});
+
 app.listen(PORT, () => {
     console.log(`Node/JSON Backend running on http://localhost:${PORT}`);
     console.log('MIS admin routes: POST /api/admin/students, POST /api/admin/faculty');
+    console.log('Workspace: /api/me/assignments, /api/me/activities, /api/me/materials, …');
 });

@@ -51,34 +51,83 @@ export default function Admin() {
 
   useEffect(() => {
     if (!departments.length || !courses.length) return
-    if (mode === 'student' && !faculty.length) return
 
     setForm((prev) => {
+      const dept = String(prev.departmentID || departments[0]?.departmentID || '')
+      const inDeptCourses = courses.filter((c) => String(c.departmentID) === dept)
+      const crs =
+        prev.courseID && inDeptCourses.some((c) => String(c.courseID) === String(prev.courseID))
+          ? String(prev.courseID)
+          : String(inDeptCourses[0]?.courseID || '')
+
       if (mode === 'faculty') {
         return {
           ...prev,
           type: 'faculty',
-          departmentID: prev.departmentID || departments[0]?.departmentID || '',
-          courseID: prev.courseID || courses[0]?.courseID || '',
+          departmentID: dept,
+          courseID: crs,
         }
       }
+      const pool = faculty.filter((f) => String(f.departmentID) === dept)
+      const adv =
+        prev.adviserFacultyID && pool.some((f) => String(f.facultyID) === String(prev.adviserFacultyID))
+          ? String(prev.adviserFacultyID)
+          : String(pool[0]?.facultyID || '')
       return {
         ...prev,
         type: 'student',
-        departmentID: prev.departmentID || departments[0]?.departmentID || '',
-        courseID: prev.courseID || courses[0]?.courseID || '',
-        adviserFacultyID: prev.adviserFacultyID || faculty[0]?.facultyID || '',
+        departmentID: dept,
+        courseID: crs,
+        adviserFacultyID: adv,
         studentType: prev.studentType || 'Regular',
       }
     })
   }, [departments, courses, faculty, mode])
 
+  const deptNum = Number(form.departmentID)
+  const coursesInDept = useMemo(
+    () => courses.filter((c) => Number(c.departmentID) === deptNum),
+    [courses, deptNum],
+  )
+  const facultyInDept = useMemo(
+    () => faculty.filter((f) => Number(f.departmentID) === deptNum),
+    [faculty, deptNum],
+  )
+
+  useEffect(() => {
+    if (!deptNum || !courses.length) return
+    setForm((prev) => {
+      const pool = courses.filter((c) => Number(c.departmentID) === deptNum)
+      if (!pool.length) {
+        return String(prev.courseID) === '' ? prev : { ...prev, courseID: '' }
+      }
+      const cur = Number(prev.courseID)
+      if (pool.some((c) => Number(c.courseID) === cur)) return prev
+      return { ...prev, courseID: String(pool[0].courseID) }
+    })
+  }, [deptNum, courses])
+
+  useEffect(() => {
+    if (mode !== 'student' || !deptNum) return
+    setForm((prev) => {
+      const pool = faculty.filter((f) => Number(f.departmentID) === deptNum)
+      if (!pool.length) {
+        return prev.adviserFacultyID === '' ? prev : { ...prev, adviserFacultyID: '' }
+      }
+      const cur = Number(prev.adviserFacultyID)
+      if (pool.some((f) => f.facultyID === cur)) return prev
+      return { ...prev, adviserFacultyID: String(pool[0].facultyID) }
+    })
+  }, [deptNum, faculty, mode])
+
   const canSubmit = useMemo(() => {
     if (!form.firstName.trim() || !form.lastName.trim() || !form.email.trim() || !form.password) return false
     if (String(form.password).length < 6) return false
-    if (mode === 'faculty') return !!form.departmentID && !!form.courseID && !!form.section
-    return !!form.departmentID && !!form.courseID && !!form.section && !!form.adviserFacultyID
-  }, [form, mode])
+    if (!deptNum || !coursesInDept.length || !String(form.section || '').trim()) return false
+    if (!coursesInDept.some((c) => Number(c.courseID) === Number(form.courseID))) return false
+    if (mode === 'faculty') return true
+    return facultyInDept.length > 0 && facultyInDept.some((f) => f.facultyID === Number(form.adviserFacultyID))
+  }, [form, mode, deptNum, coursesInDept, facultyInDept])
 
   const stats = useMemo(
     () => [
@@ -271,6 +320,9 @@ export default function Admin() {
                   <GraduationCap size={18} aria-hidden />
                   Academic assignment
                 </h4>
+                <p className="admin-field-hint admin-form-cell admin-form-cell--full" style={{ marginBottom: '0.5rem' }}>
+                  Department, course, and section are required. Courses are limited to the selected department; student advisers are limited to faculty in that department.
+                </p>
                 <div className="admin-form-grid admin-form-grid--academic">
                   <div className="admin-form-cell">
                     <label htmlFor="admin-dept">Department</label>
@@ -279,9 +331,23 @@ export default function Admin() {
                     </select>
                   </div>
                   <div className="admin-form-cell">
-                    <label htmlFor="admin-course">Course</label>
-                    <select id="admin-course" value={form.courseID} onChange={(e) => setForm({ ...form, courseID: e.target.value })} required>
-                      {courses.map(c => <option key={c.courseID} value={c.courseID}>{c.courseCode} — {c.courseName}</option>)}
+                    <label htmlFor="admin-course">Course (in department)</label>
+                    <select
+                      id="admin-course"
+                      value={form.courseID}
+                      onChange={(e) => setForm({ ...form, courseID: e.target.value })}
+                      required
+                      disabled={!coursesInDept.length}
+                    >
+                      {coursesInDept.length === 0 ? (
+                        <option value="">No courses linked to this department</option>
+                      ) : (
+                        coursesInDept.map((c) => (
+                          <option key={c.courseID} value={c.courseID}>
+                            {c.courseCode} — {c.courseName}
+                          </option>
+                        ))
+                      )}
                     </select>
                   </div>
                   <div className="admin-form-cell">
@@ -291,9 +357,23 @@ export default function Admin() {
                   {mode === 'student' ? (
                     <>
                       <div className="admin-form-cell">
-                        <label htmlFor="admin-adviser">Faculty adviser</label>
-                        <select id="admin-adviser" value={form.adviserFacultyID} onChange={(e) => setForm({ ...form, adviserFacultyID: e.target.value })} required>
-                          {faculty.map(f => <option key={f.facultyID} value={f.facultyID}>{f.firstName} {f.lastName}</option>)}
+                        <label htmlFor="admin-adviser">Faculty adviser (same department)</label>
+                        <select
+                          id="admin-adviser"
+                          value={form.adviserFacultyID}
+                          onChange={(e) => setForm({ ...form, adviserFacultyID: e.target.value })}
+                          required
+                          disabled={!facultyInDept.length}
+                        >
+                          {facultyInDept.length === 0 ? (
+                            <option value="">No faculty in this department</option>
+                          ) : (
+                            facultyInDept.map((f) => (
+                              <option key={f.facultyID} value={f.facultyID}>
+                                {f.firstName} {f.lastName}
+                              </option>
+                            ))
+                          )}
                         </select>
                       </div>
                       <div className="admin-form-cell">

@@ -6,6 +6,7 @@ import {
   Sparkles, AlertTriangle, Mars, Venus,
 } from 'lucide-react'
 import { useData } from '../context/DataContext'
+import { useLmsBase, lmsPath } from '../lib/lmsPaths'
 
 function MiniBar({ label, value, max, color = '#fb923c' }) {
   const pct = max > 0 ? Math.round((value / max) * 100) : 0
@@ -24,6 +25,7 @@ function MiniBar({ label, value, max, color = '#fb923c' }) {
 
 export default function Dashboard() {
   const { students, courses, faculty, profiles } = useData()
+  const base = useLmsBase()
 
   const s = useMemo(() => {
     const enrolled  = students.filter(x => x.enrollmentStatus === 'Enrolled').length
@@ -132,7 +134,7 @@ export default function Dashboard() {
         </div>
 
         <div className="dashboard-masthead-stats">
-          <Link to="/students" className="dash-stat-tile dash-stat-tile--link">
+          <Link to={lmsPath(base, '/students')} className="dash-stat-tile dash-stat-tile--link">
             <span className="dash-stat-tile-icon"><Users size={20} strokeWidth={2} /></span>
             <span className="dash-stat-tile-copy">
               <span className="dash-stat-tile-value">{students.length}</span>
@@ -140,14 +142,14 @@ export default function Dashboard() {
               <span className="dash-stat-tile-hint">{s.enrolled} enrolled</span>
             </span>
           </Link>
-          <Link to="/courses" className="dash-stat-tile dash-stat-tile--link">
+          <Link to={lmsPath(base, '/courses')} className="dash-stat-tile dash-stat-tile--link">
             <span className="dash-stat-tile-icon"><BookOpen size={20} strokeWidth={2} /></span>
             <span className="dash-stat-tile-copy">
               <span className="dash-stat-tile-value">{courses.length}</span>
               <span className="dash-stat-tile-label">Courses</span>
             </span>
           </Link>
-          <Link to="/faculty" className="dash-stat-tile dash-stat-tile--link">
+          <Link to={lmsPath(base, '/faculty')} className="dash-stat-tile dash-stat-tile--link">
             <span className="dash-stat-tile-icon"><UserCircle size={20} strokeWidth={2} /></span>
             <span className="dash-stat-tile-copy">
               <span className="dash-stat-tile-value">{faculty.length}</span>
@@ -297,7 +299,7 @@ export default function Dashboard() {
                   ? new Date(v.created_at).toLocaleDateString()
                   : '—'
               return (
-                <Link key={v.violationID ?? i} to={`/students/${v.studentID}`} className="dash-recent-row">
+                <Link key={v.violationID ?? i} to={lmsPath(base, `/students/${v.studentID}`)} className="dash-recent-row">
                   <div className="dash-recent-info">
                     <div className="dash-recent-name">{v.studentName}</div>
                     <div className="dash-recent-meta">{v.violationType || v.type || 'Violation'} · {dateStr}</div>
@@ -317,12 +319,12 @@ export default function Dashboard() {
         <div className="dash-recent-header">
           <Users size={16} strokeWidth={2} />
           <h3>Recently Added Students</h3>
-          <Link to="/students">View all</Link>
+          <Link to={lmsPath(base, '/students')}>View all</Link>
         </div>
         {s.recent.length > 0 ? s.recent.map(st => {
           const course = courses.find(c => c.courseID === st.courseID)
           return (
-            <Link key={st.studentID} to={`/students/${st.studentID}`} className="dash-recent-row">
+            <Link key={st.studentID} to={lmsPath(base, `/students/${st.studentID}`)} className="dash-recent-row">
               <div className="student-avatar" style={{ width: 36, height: 36, fontSize: '0.8rem', flexShrink: 0 }}>
                 {st.photo
                   ? <img src={st.photo} alt={st.firstName} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
@@ -341,22 +343,22 @@ export default function Dashboard() {
 
       {/* Quick actions */}
       <section className="dashboard-actions">
-        <Link to="/students" className="action-card">
+        <Link to={lmsPath(base, '/students')} className="action-card">
           <Users size={28} />
           <h3>Students</h3>
           <p>View and manage all student profiles with full academic, medical, and personal records.</p>
         </Link>
-        <Link to="/reports" className="action-card">
+        <Link to={lmsPath(base, '/reports')} className="action-card">
           <FileBarChart size={28} />
           <h3>Reports & Queries</h3>
           <p>Run queries — basketball tryouts, programming contest, honor roll, and custom filters.</p>
         </Link>
-        <Link to="/courses" className="action-card">
+        <Link to={lmsPath(base, '/courses')} className="action-card">
           <BookOpen size={28} />
           <h3>Courses</h3>
           <p>Manage BSIT, BSCS, BSIS and other CCS programs.</p>
         </Link>
-        <Link to="/faculty" className="action-card">
+        <Link to={lmsPath(base, '/faculty')} className="action-card">
           <UserCircle size={28} />
           <h3>Faculty</h3>
           <p>Manage CCS faculty members, positions, and contact information.</p>

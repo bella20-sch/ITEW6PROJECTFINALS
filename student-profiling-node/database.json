@@ -49,8 +49,11 @@
       "employmentStatus": "Full-time",
       "hireDate": "2015-06-01",
       "email": "ana.reyes@school.edu",
+      "password": "faculty123",
       "contactNumber": "9876543210",
-      "officeLocation": "A-201"
+      "officeLocation": "A-201",
+      "courseID": 1,
+      "section": "4IT-B"
     },
     {
       "facultyID": 2,
@@ -112,14 +115,16 @@
       "civilStatus": "Single",
       "contactNumber": "9123456789",
       "email": "maria.santos@school.edu",
+      "password": "student123",
       "address": "123 Main St, Manila",
-      "yearLevel": 3,
-      "section": "STEM-A",
+      "yearLevel": 4,
+      "section": "4IT-B",
       "studentType": "Regular",
       "enrollmentStatus": "Enrolled",
       "dateEnrolled": "2020-06-01",
       "courseID": 1,
-      "departmentID": 1
+      "departmentID": 1,
+      "adviserFacultyID": 1
     },
     {
       "studentID": 2,
@@ -563,5 +568,18 @@
       "status": "Resolved",
       "resolutionDate": "2024-02-15"
     }
-  ]
+  ],
+  "teachingLoads": [
+    {
+      "teachingLoadID": 1,
+      "facultyID": 1,
+      "courseID": 1,
+      "section": "4IT-B",
+      "subjectCode": "CCS101",
+      "subjectTitle": "Computer Programming 1"
+    }
+  ],
+  "classActivities": [],
+  "classActivitySubmissions": [],
+  "sectionMaterials": []
 }

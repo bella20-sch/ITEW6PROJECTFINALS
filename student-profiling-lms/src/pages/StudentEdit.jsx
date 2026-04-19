@@ -7,10 +7,12 @@ import StudentForm from '../components/StudentForm'
 import ConfirmModal from '../components/ConfirmModal'
 import { useData } from '../context/DataContext'
 import { useToast } from '../context/ToastContext'
+import { useLmsBase, lmsPath } from '../lib/lmsPaths'
 
 export default function StudentEdit() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const base = useLmsBase()
   const { students, profiles, courses, departments, crud } = useData()
   const { showToast } = useToast()
   const [loading, setLoading] = useState(true)
@@ -64,7 +66,7 @@ export default function StudentEdit() {
       <div className="page">
         <p>
           {loadError || 'Student not found.'}{' '}
-          <Link to="/students">Back to students</Link>
+          <Link to={lmsPath(base, '/students')}>Back to students</Link>
         </p>
       </div>
     )
@@ -75,7 +77,7 @@ export default function StudentEdit() {
   return (
     <div className="page student-add-page student-edit-page">
       <div className="student-form-page-toolbar">
-        <Link to={`/students/${id}`} className="student-form-page-back">
+        <Link to={lmsPath(base, `/students/${id}`)} className="student-form-page-back">
           <ArrowLeft size={18} strokeWidth={2} aria-hidden />
           Back to profile
         </Link>
@@ -126,7 +128,7 @@ export default function StudentEdit() {
             setPendingSave(payload)
             setConfirmOpen(true)
           }}
-          onCancel={() => navigate(`/students/${id}`)}
+          onCancel={() => navigate(lmsPath(base, `/students/${id}`))}
         />
       </div>
 
@@ -138,7 +140,7 @@ export default function StudentEdit() {
           setConfirmOpen(false)
           try {
             await crud.students.update(numericId, pendingSave)
-            navigate(`/students/${id}`)
+            navigate(lmsPath(base, `/students/${id}`))
           } catch (err) {
             showToast(err?.message || 'Failed to update student.', 'error')
           }

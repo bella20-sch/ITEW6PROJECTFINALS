@@ -7,11 +7,13 @@ import StudentForm from '../components/StudentForm'
 import ConfirmModal from '../components/ConfirmModal'
 import { useData } from '../context/DataContext'
 import { useToast } from '../context/ToastContext'
+import { useLmsBase, lmsPath } from '../lib/lmsPaths'
 
 export default function StudentAdd() {
   const { students, courses, departments, crud } = useData()
   const { showToast } = useToast()
   const navigate = useNavigate()
+  const base = useLmsBase()
   const [pendingSave, setPendingSave] = useState(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
 
@@ -23,7 +25,7 @@ export default function StudentAdd() {
   return (
     <div className="page student-add-page">
       <div className="student-form-page-toolbar">
-        <Link to="/students" className="student-form-page-back">
+        <Link to={lmsPath(base, '/students')} className="student-form-page-back">
           <ArrowLeft size={18} strokeWidth={2} aria-hidden />
           Back to students
         </Link>
@@ -74,7 +76,7 @@ export default function StudentAdd() {
             setPendingSave(payload)
             setConfirmOpen(true)
           }}
-          onCancel={() => navigate('/students')}
+          onCancel={() => navigate(lmsPath(base, '/students'))}
         />
       </div>
 
@@ -86,7 +88,7 @@ export default function StudentAdd() {
           setConfirmOpen(false)
           try {
             await crud.students.create(pendingSave)
-            navigate('/students')
+            navigate(lmsPath(base, '/students'))
           } catch (err) {
             showToast(err?.message || 'Failed to create student.', 'error')
           }

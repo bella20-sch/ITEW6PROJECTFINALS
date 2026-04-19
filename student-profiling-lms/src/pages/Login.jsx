@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate, Navigate } from 'react-router-dom'
 import { GraduationCap, Lock, Mail, Eye, EyeOff, Moon, Sun } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { getTheme, setTheme } from '../lib/theme'
+import { homePathForRole } from '../lib/lmsPaths'
 
 export default function Login() {
-  const { login } = useAuth()
+  const { login, ready, isAuthenticated, currentUser } = useAuth()
   const { showToast } = useToast()
   const navigate = useNavigate()
   const location = useLocation()
@@ -52,7 +53,33 @@ export default function Login() {
 
     showToast('Login successful. Redirecting...', 'success')
 
-    navigate(from, { replace: true })
+    const role = res.user?.role
+    let target = homePathForRole(role)
+    if (role !== 'Admin' && from && from !== '/login') {
+      if (String(from).startsWith('/mis')) target = '/'
+      else if (String(from) === '/admin') target = '/mis/provision'
+      else target = from
+    }
+
+    navigate(target, { replace: true })
+  }
+
+  if (!ready) {
+    return (
+      <div className="auth-shell">
+        <div className="auth-right" style={{ margin: 'auto' }}>
+          <div className="auth-card">
+            <p className="muted" style={{ textAlign: 'center', margin: 0 }}>
+              Loading…
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (isAuthenticated && currentUser) {
+    return <Navigate to={homePathForRole(currentUser.role)} replace />
   }
 
   return (
@@ -95,8 +122,8 @@ export default function Login() {
       <div className="auth-right">
         <div className="auth-card">
           <div className="auth-card-head">
-            <h2>Admin Login</h2>
-            <p className="subtitle">Sign in to manage the CCS Student Profiling LMS.</p>
+            <h2>Sign in</h2>
+            <p className="subtitle">MIS administrators, faculty, and students use the same portal — your role opens the right workspace after login.</p>
           </div>
 
           {/* Toast takes over error display */}

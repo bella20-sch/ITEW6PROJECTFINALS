@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { useData } from '../context/DataContext'
 import { useAuth } from '../context/AuthContext'
+import { useLmsBase, lmsPath } from '../lib/lmsPaths'
 import ReqStar from '../components/ReqStar'
 import Modal from '../components/Modal'
 
@@ -273,6 +274,7 @@ export default function StudentProfile() {
   const { crud, subCrud, profiles, courses, departments } = useData()
   const { currentUser } = useAuth()
   const isAdmin = currentUser?.role === 'Admin'
+  const base = useLmsBase()
 
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
@@ -303,7 +305,7 @@ export default function StudentProfile() {
   const closeConfirm = () => setConfirm(c => ({ ...c, open: false }))
 
   if (loading) return <div className="page"><p className="muted">Loading student profile…</p></div>
-  if (!student) return <div className="page"><p>{loadError || 'Student not found.'} <Link to="/students">Back</Link></p></div>
+  if (!student) return <div className="page"><p>{loadError || 'Student not found.'} <Link to={lmsPath(base, '/students')}>Back</Link></p></div>
 
   const fullName = `${student.firstName} ${student.middleName || ''} ${student.lastName} ${student.suffix || ''}`.trim()
   const course = courses.find(c => c.courseID === student.courseID)
@@ -317,7 +319,7 @@ export default function StudentProfile() {
       async () => {
         closeConfirm()
         await crud.students.delete(student.studentID)
-        navigate('/students', { replace: true })
+        navigate(lmsPath(base, '/students'), { replace: true })
       },
       true
     )
@@ -372,10 +374,10 @@ export default function StudentProfile() {
   return (
     <div className="page">
       <div className="profile-toolbar">
-        <Link to="/students" className="back-link"><ArrowLeft size={18} /> Back to Students</Link>
+        <Link to={lmsPath(base, '/students')} className="back-link"><ArrowLeft size={18} /> Back to Students</Link>
         <div>
           {isAdmin && (
-            <Link to={`/students/${id}/edit`} className="btn btn-outline">
+            <Link to={lmsPath(base, `/students/${id}/edit`)} className="btn btn-outline">
               <Pencil size={16} /> Edit
             </Link>
           )}
