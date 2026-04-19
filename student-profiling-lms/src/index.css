@@ -5846,6 +5846,40 @@ a {
   border-bottom: none;
 }
 
+.faculty-class-inline-link {
+  display: inline;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  color: var(--color-accent-dark);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.faculty-class-inline-link:hover {
+  color: var(--color-accent);
+}
+
+.faculty-class-grades-summary-wrap {
+  margin-top: 1rem;
+  overflow-x: auto;
+}
+
+.faculty-class-grades-summary-table {
+  margin-top: 0;
+}
+
+.faculty-class-grades-summary-table td {
+  font-variant-numeric: tabular-nums;
+}
+
+.faculty-class-grades-edit-link {
+  white-space: nowrap;
+}
+
 .faculty-class-ico-ok {
   color: #059669;
 }

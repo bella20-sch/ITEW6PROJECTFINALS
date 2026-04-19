@@ -3,7 +3,6 @@ import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { apiFetch } from '../lib/api'
 import { useLmsBase, lmsPath } from '../lib/lmsPaths'
-import FacultyStudentGradeCard from '../components/FacultyStudentGradeCard'
 import {
   ArrowLeft,
   Users,
@@ -41,7 +40,7 @@ export default function FacultyClassSection() {
   const [semester, setSemester] = useState(1)
   const [loading, setLoading] = useState(true)
   const [msg, setMsg] = useState('')
-  const [busy, setBusy] = useState('')
+  const [busy, setBusy] = useState('') // posting activity only
 
   const [newAct, setNewAct] = useState({
     title: '',
@@ -98,32 +97,6 @@ export default function FacultyClassSection() {
 
   const tl = classroom?.teachingLoad
 
-  const savePeriodGrades = async (studentID, period, payload) => {
-    setBusy(`${studentID}-${period}`)
-    setMsg('')
-    try {
-      await apiFetch(`/api/faculty/teaching-loads/${tlId}/gradebook`, {
-        token,
-        method: 'PUT',
-        body: {
-          studentID,
-          schoolYear,
-          semester,
-          period,
-          attendancePct: Number(payload.attendancePct),
-          quizPct: Number(payload.quizPct),
-          examPct: Number(payload.examPct),
-        },
-      })
-      setMsg('Grades saved.')
-      await loadAll()
-    } catch (e) {
-      setMsg(e?.message || 'Save failed.')
-    } finally {
-      setBusy('')
-    }
-  }
-
   const postActivity = async (e) => {
     e.preventDefault()
     if (!newAct.title.trim()) return
@@ -164,7 +137,13 @@ export default function FacultyClassSection() {
   const activities = classroom?.activities || []
   const materials = classroom?.materials || []
 
-  const gradeRows = useMemo(() => gradebook?.students || [], [gradebook])
+  /** Same roster order as Students tab; gradebook is already scoped to this teaching load’s course + section on the server. */
+  const gradeRowsOrdered = useMemo(() => {
+    const byId = new Map((gradebook?.students || []).map((r) => [Number(r.studentID), r]))
+    return roster.map((s) => byId.get(Number(s.studentID))).filter(Boolean)
+  }, [roster, gradebook])
+
+  const fmtPeriod = (v) => (v != null && !Number.isNaN(Number(v)) ? Number(v).toFixed(2) : '—')
 
   if (currentUser?.role !== 'Faculty') {
     return <Navigate to={lmsPath(base, '/')} replace />
@@ -448,18 +427,55 @@ export default function FacultyClassSection() {
       {tab === 'grades' && gradebook && (
         <section className="faculty-class-panel" aria-labelledby="tab-grades">
           <h2 id="tab-grades" className="faculty-class-panel-title">
-            Grades
+            Grades — this class only
           </h2>
           <p className="muted faculty-class-hint">
-            Each period = <strong>20%</strong> activities (from graded activity-type posts) + <strong>10%</strong> attendance +{' '}
-            <strong>20%</strong> quizzes + <strong>50%</strong> exams (0–100 each). Posted quizzes/exams that are graded replace manual
-            quiz/exam for that period. Semester average = average of prelim, midterm, and finals totals.
+            Totals below are for <strong>{tl.subjectCode}</strong> · Sec. {tl.section} only (same roster as the Students tab). Period scores use
+            20% activities + 10% attendance + 20% quizzes + 50% exams. To enter or change grades, open each student from the{' '}
+            <button type="button" className="faculty-class-inline-link" onClick={() => selectTab('students')}>
+              Students
+            </button>{' '}
+            tab (or use the <strong>Edit grades</strong> link in each row).
           </p>
-          <div className="faculty-grade-cards">
-            {gradeRows.map((row) => (
-              <FacultyStudentGradeCard key={row.studentID} row={row} busy={busy} onSavePeriod={savePeriodGrades} />
-            ))}
-          </div>
+          {!gradeRowsOrdered.length ? (
+            <p className="muted">No students enrolled in this section yet.</p>
+          ) : (
+            <div className="faculty-class-grades-summary-wrap">
+              <table className="faculty-class-roster-table faculty-class-grades-summary-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Student</th>
+                    <th scope="col">Prelim</th>
+                    <th scope="col">Midterm</th>
+                    <th scope="col">Finals</th>
+                    <th scope="col">Semester avg</th>
+                    <th scope="col">
+                      <span className="sr-only">Actions</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {gradeRowsOrdered.map((row) => (
+                    <tr key={row.studentID}>
+                      <td>{row.studentName}</td>
+                      <td>{fmtPeriod(row.periods?.prelim?.periodTotal)}</td>
+                      <td>{fmtPeriod(row.periods?.midterm?.periodTotal)}</td>
+                      <td>{fmtPeriod(row.periods?.finals?.periodTotal)}</td>
+                      <td>{fmtPeriod(row.semesterAverage)}</td>
+                      <td>
+                        <Link
+                          to={lmsPath(base, `/my-classes/${tlId}/students/${row.studentID}?tab=grades`)}
+                          className="btn btn-outline btn-sm faculty-class-grades-edit-link"
+                        >
+                          Edit grades
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
       )}
     </div>

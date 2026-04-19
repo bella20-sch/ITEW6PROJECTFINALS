@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link, Navigate, useParams } from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { apiFetch } from '../lib/api'
 import { useLmsBase, lmsPath } from '../lib/lmsPaths'
@@ -11,6 +11,8 @@ export default function FacultyClassStudent() {
   const tlId = Number(teachingLoadId)
   const sid = Number(studentId)
   const base = useLmsBase()
+  const [searchParams] = useSearchParams()
+  const gradesSectionRef = useRef(null)
   const { token, currentUser } = useAuth()
   const [classroom, setClassroom] = useState(null)
   const [gradebook, setGradebook] = useState(null)
@@ -46,6 +48,13 @@ export default function FacultyClassStudent() {
   useEffect(() => {
     loadAll()
   }, [loadAll])
+
+  useEffect(() => {
+    if (loading) return
+    if (searchParams.get('tab') !== 'grades') return
+    const el = gradesSectionRef.current
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [loading, searchParams])
 
   const tl = classroom?.teachingLoad
   const roster = classroom?.students || []
@@ -215,17 +224,22 @@ export default function FacultyClassStudent() {
         )}
       </section>
 
-      <section className="faculty-class-student-section" aria-labelledby="stu-grade-heading">
+      <section
+        ref={gradesSectionRef}
+        className="faculty-class-student-section"
+        aria-labelledby="stu-grade-heading"
+        id="faculty-class-student-grades"
+      >
         <h2 id="stu-grade-heading" className="faculty-class-panel-title">
           Grades for this class
         </h2>
         <p className="muted faculty-class-hint">
-          Same breakdown as the class Grades tab: activities, attendance, quizzes, and exams by period, plus semester average.
+          Activities, attendance, quizzes, and exams by period for this subject and section only, plus semester average.
         </p>
         {gradeRow ? (
           <FacultyStudentGradeCard row={gradeRow} busy={busy} onSavePeriod={savePeriodGrades} />
         ) : (
-          <p className="muted">No grade row yet — use the class Grades tab or save once after entering data.</p>
+          <p className="muted">No grade data for this student in this class yet. Save once after entering period inputs.</p>
         )}
       </section>
     </div>
