@@ -7,6 +7,7 @@ import { useToast } from '../context/ToastContext'
 import { BookOpen, Plus, Pencil, Trash2, Building2, Sparkles, Layers } from 'lucide-react'
 import Modal from '../components/Modal'
 import ConfirmModal from '../components/ConfirmModal'
+import DirectoryFetchBarrier from '../components/DirectoryFetchBarrier'
 
 export default function Courses() {
   const { departments, crud } = useData()
@@ -81,6 +82,7 @@ export default function Courses() {
   }
 
   return (
+    <DirectoryFetchBarrier>
     <div className="page">
       <header className="courses-hero" aria-labelledby="courses-hero-title">
         <div className="courses-hero-glow" aria-hidden="true" />
@@ -182,5 +184,6 @@ export default function Courses() {
         onCancel={() => setConfirm({ open: false })}
       />
     </div>
+    </DirectoryFetchBarrier>
   )
 }

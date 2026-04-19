@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { useData } from '../context/DataContext'
 import { useAuth } from '../context/AuthContext'
+import DirectoryFetchBarrier from '../components/DirectoryFetchBarrier'
 import { useLmsBase, lmsPath } from '../lib/lmsPaths'
 
 function MiniBar({ label, value, max, color = '#fb923c' }) {
@@ -103,6 +104,7 @@ export default function Dashboard() {
   const enrolledPct = students.length > 0 ? Math.round((s.enrolled / students.length) * 100) : 0
 
   return (
+    <DirectoryFetchBarrier>
     <div className="dashboard">
       <header className="dashboard-masthead" aria-labelledby="dashboard-masthead-title">
         <div className="dashboard-masthead-glow" aria-hidden="true" />
@@ -385,5 +387,6 @@ export default function Dashboard() {
         </Link>
       </section>
     </div>
+    </DirectoryFetchBarrier>
   )
 }

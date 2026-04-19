@@ -14,6 +14,7 @@ import {
 import { useAuth } from '../context/AuthContext'
 import { apiFetch } from '../lib/api'
 import { useData } from '../context/DataContext'
+import DirectoryFetchBarrier from '../components/DirectoryFetchBarrier'
 
 const defaultStudent = {
   type: 'student',
@@ -246,6 +247,7 @@ export default function Admin() {
   }
 
   return (
+    <DirectoryFetchBarrier>
     <div className="page admin-page admin-page--deck">
       <header className="admin-hero" aria-labelledby="admin-hero-title">
         <div className="admin-hero-glow" aria-hidden="true" />
@@ -600,5 +602,6 @@ export default function Admin() {
         </aside>
       </div>
     </div>
+    </DirectoryFetchBarrier>
   )
 }

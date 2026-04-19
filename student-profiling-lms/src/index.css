@@ -6037,3 +6037,232 @@ a {
   font-size: 0.82rem;
   padding: 0.35rem 0.65rem;
 }
+
+/* --- API / directory loading skeletons --- */
+@keyframes skel-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+.skel-block,
+.skel-line,
+.skel-chip,
+.skel-sidebar-row,
+.skel-panel {
+  border-radius: var(--radius-md);
+  background: linear-gradient(
+    110deg,
+    var(--color-bg-primary) 0%,
+    var(--color-border) 42%,
+    var(--color-bg-primary) 84%
+  );
+  background-size: 200% 100%;
+  animation: skel-shimmer 1.35s ease-in-out infinite;
+}
+
+.skel-mt {
+  margin-top: 0.65rem;
+}
+.skel-mt-lg {
+  margin-top: 1.25rem;
+}
+
+.skel-block--lg {
+  height: 2rem;
+  max-width: 18rem;
+}
+.skel-block--md {
+  height: 1.1rem;
+  max-width: 14rem;
+}
+.skel-block--sm {
+  height: 0.85rem;
+  max-width: 22rem;
+}
+.skel-block--xs {
+  height: 0.75rem;
+  max-width: 10rem;
+}
+.skel-block--icon {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--radius-md);
+}
+.skel-block--stat {
+  height: 1.75rem;
+  margin-top: 0.75rem;
+  max-width: 5rem;
+}
+.skel-block--logo {
+  height: 2.5rem;
+  margin-bottom: 1.5rem;
+  border-radius: var(--radius-sm);
+}
+.skel-block--header-title {
+  height: 1.35rem;
+  width: 11rem;
+}
+.skel-block--header-actions {
+  height: 2.25rem;
+  width: 7rem;
+  border-radius: 999px;
+}
+
+.skel-line {
+  height: 0.72rem;
+  width: 100%;
+}
+.skel-line--short {
+  width: 55%;
+}
+
+.skel-chip {
+  height: 1.85rem;
+  width: 5.5rem;
+  border-radius: 999px;
+}
+
+.skel-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.skel-sidebar-row {
+  height: 0.95rem;
+  width: 100%;
+  margin-bottom: 0.65rem;
+}
+
+.skel-panel {
+  padding: 1.25rem 1.35rem;
+  min-height: 8rem;
+}
+.skel-panel--wide {
+  width: 100%;
+}
+
+.content-skeleton-page {
+  max-width: 1120px;
+  margin: 0 auto;
+}
+
+.content-skeleton-masthead {
+  margin-bottom: 1.5rem;
+}
+
+.content-skeleton-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.75rem;
+}
+
+.content-skeleton-card {
+  padding: 1.15rem 1.25rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+}
+
+.content-skeleton-panels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+
+.content-skeleton-caption {
+  margin-top: 1.5rem;
+  font-size: 0.88rem;
+  text-align: center;
+}
+
+.layout--skeleton {
+  min-height: 100vh;
+}
+
+.layout--offline {
+  min-height: 100vh;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg-primary);
+}
+
+.app-shell-skel-sidebar {
+  width: var(--sidebar-width, 260px);
+  padding: 1.25rem 1rem;
+  border-right: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+}
+
+.app-shell-skel-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.app-shell-skel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+}
+
+.app-shell-skel-body {
+  padding: 1.5rem;
+  flex: 1;
+}
+
+.server-offline-panel {
+  margin: auto;
+  max-width: 28rem;
+  padding: 2.5rem 2rem;
+  text-align: center;
+}
+
+.server-offline-icon {
+  display: inline-flex;
+  margin-bottom: 1rem;
+  color: var(--color-text-muted);
+}
+
+.server-offline-title {
+  margin: 0 0 0.75rem;
+  font-size: 1.35rem;
+  font-family: 'Outfit', sans-serif;
+}
+
+.server-offline-copy {
+  line-height: 1.55;
+  margin-bottom: 1.5rem;
+}
+
+.data-directory-error-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+}
+
+.data-directory-error-card {
+  max-width: 26rem;
+  padding: 2rem 1.75rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+  box-shadow: var(--shadow-sm);
+}
+
+.data-directory-error-title {
+  margin: 0 0 0.65rem;
+  font-size: 1.2rem;
+  font-family: 'Outfit', sans-serif;
+}

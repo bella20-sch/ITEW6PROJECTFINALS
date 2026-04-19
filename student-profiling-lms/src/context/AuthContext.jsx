@@ -1,5 +1,5 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react'
-import { apiFetch } from '../lib/api'
+import { createContext, useContext, useCallback, useEffect, useMemo, useState } from 'react'
+import { apiFetch, checkApiHealth } from '../lib/api'
 
 const AuthContext = createContext(null)
 
@@ -26,13 +26,33 @@ export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null)
   const [token, setToken] = useState('')
   const [ready, setReady] = useState(false)
+  /** null = checking; true = API reachable; false = offline / server down / DB unreadable */
+  const [serverReachable, setServerReachable] = useState(true)
 
   useEffect(() => {
+    let cancelled = false
     const c = loadCurrentUser()
     const t = localStorage.getItem(STORAGE_KEYS.token) || ''
     setCurrentUser(c)
     setToken(t)
-    setReady(true)
+
+    if (!c || !t) {
+      setServerReachable(true)
+      setReady(true)
+      return () => {
+        cancelled = true
+      }
+    }
+
+    setServerReachable(null)
+    checkApiHealth().then((r) => {
+      if (!cancelled) setServerReachable(!!r.ok)
+      if (!cancelled) setReady(true)
+    })
+
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   useEffect(() => {
@@ -47,12 +67,32 @@ export function AuthProvider({ children }) {
     else localStorage.removeItem(STORAGE_KEYS.token)
   }, [token, ready])
 
+  const recheckServer = useCallback(async () => {
+    if (!token || !currentUser) {
+      setServerReachable(true)
+      return { ok: true }
+    }
+    setServerReachable(null)
+    const r = await checkApiHealth()
+    setServerReachable(!!r.ok)
+    return r
+  }, [token, currentUser])
+
+  useEffect(() => {
+    const onOnline = () => {
+      if (token && currentUser) recheckServer()
+    }
+    window.addEventListener('online', onOnline)
+    return () => window.removeEventListener('online', onOnline)
+  }, [token, currentUser, recheckServer])
+
   const value = useMemo(() => {
     const login = async ({ email, password }) => {
       try {
         const res = await apiFetch('/api/auth/login', { method: 'POST', body: { email, password } })
         setToken(res.token || '')
         setCurrentUser(res.user || null)
+        setServerReachable(true)
         return { ok: true, user: res.user || null }
       } catch (e) {
         return { ok: false, error: e?.message || 'Login failed.' }
@@ -67,6 +107,7 @@ export function AuthProvider({ children }) {
       } finally {
         setToken('')
         setCurrentUser(null)
+        setServerReachable(true)
       }
     }
 
@@ -75,10 +116,12 @@ export function AuthProvider({ children }) {
       token,
       currentUser,
       isAuthenticated: !!currentUser,
+      serverReachable,
+      recheckServer,
       login,
       logout,
     }
-  }, [currentUser, ready, token])
+  }, [currentUser, ready, recheckServer, serverReachable, token])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
@@ -88,4 +131,3 @@ export function useAuth() {
   if (!ctx) throw new Error('useAuth must be used within AuthProvider')
   return ctx
 }
-

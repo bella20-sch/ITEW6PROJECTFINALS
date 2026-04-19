@@ -10,6 +10,7 @@ import ReqStar from '../components/ReqStar'
 import FilterDropdown from '../components/FilterDropdown'
 import ConfirmModal from '../components/ConfirmModal'
 import FacultyMyProfile from './FacultyMyProfile'
+import DirectoryFetchBarrier from '../components/DirectoryFetchBarrier'
 
 export default function Faculty() {
   const { id: routeFacultyId } = useParams()
@@ -141,6 +142,7 @@ export default function Faculty() {
   }
 
   return (
+    <DirectoryFetchBarrier>
     <div className="page">
       <header className="faculty-hero" aria-labelledby="faculty-hero-title">
         <div className="faculty-hero-glow" aria-hidden="true" />
@@ -372,5 +374,6 @@ export default function Faculty() {
         onCancel={() => setConfirm({ open: false })}
       />
     </div>
+    </DirectoryFetchBarrier>
   )
 }

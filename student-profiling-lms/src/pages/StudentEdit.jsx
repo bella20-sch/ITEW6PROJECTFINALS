@@ -8,12 +8,14 @@ import ConfirmModal from '../components/ConfirmModal'
 import { useData } from '../context/DataContext'
 import { useToast } from '../context/ToastContext'
 import { useLmsBase, lmsPath } from '../lib/lmsPaths'
+import ContentLoadingSkeleton from '../components/ContentLoadingSkeleton'
+import DirectoryLoadErrorPanel from '../components/DirectoryLoadErrorPanel'
 
 export default function StudentEdit() {
   const { id } = useParams()
   const navigate = useNavigate()
   const base = useLmsBase()
-  const { students, profiles, courses, departments, crud } = useData()
+  const { students, profiles, courses, departments, crud, directoryStatus, reloadDirectory } = useData()
   const { showToast } = useToast()
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
@@ -53,12 +55,15 @@ export default function StudentEdit() {
     [students],
   )
 
+  if (directoryStatus === 'loading' || directoryStatus === 'idle') {
+    return <ContentLoadingSkeleton title="Loading directory data…" />
+  }
+  if (directoryStatus === 'error') {
+    return <DirectoryLoadErrorPanel onRetry={reloadDirectory} />
+  }
+
   if (loading) {
-    return (
-      <div className="page">
-        <p className="muted">Loading student…</p>
-      </div>
-    )
+    return <ContentLoadingSkeleton title="Loading student record…" />
   }
 
   if (!student) {

@@ -13,6 +13,16 @@ app.use(cors());
 /* Default json limit is 100kb — base64 photos (students/faculty) exceed that and the body is rejected. */
 app.use(express.json({ limit: '15mb' }));
 
+/** Public liveness: process up + database file readable (used by LMS bootstrap / refresh). */
+app.get('/api/health', (_req, res) => {
+    try {
+        JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
+        return res.json({ ok: true });
+    } catch {
+        return res.status(503).json({ ok: false, message: 'Database unavailable.' });
+    }
+});
+
 // Load database helper (workspace collections optional in older JSON files)
 const getDb = () => {
     const db = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));

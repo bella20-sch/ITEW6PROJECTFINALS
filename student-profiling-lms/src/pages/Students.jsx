@@ -3,6 +3,7 @@ import { Link, Navigate } from 'react-router-dom'
 import { Search, ChevronRight, Plus, Users, UserCheck, BookOpen, Sparkles, GraduationCap } from 'lucide-react'
 import { useData } from '../context/DataContext'
 import { useAuth } from '../context/AuthContext'
+import DirectoryFetchBarrier from '../components/DirectoryFetchBarrier'
 import { useLmsBase, lmsPath } from '../lib/lmsPaths'
 import FilterDropdown from '../components/FilterDropdown'
 
@@ -68,6 +69,7 @@ export default function Students() {
   const enrolledCount = students.filter((s) => s.enrollmentStatus === 'Enrolled').length
 
   return (
+    <DirectoryFetchBarrier>
     <div className="page">
       <header className="students-hero" aria-labelledby="students-hero-title">
         <div className="students-hero-glow" aria-hidden="true" />
@@ -226,5 +228,6 @@ export default function Students() {
       )}
 
     </div>
+    </DirectoryFetchBarrier>
   )
 }
