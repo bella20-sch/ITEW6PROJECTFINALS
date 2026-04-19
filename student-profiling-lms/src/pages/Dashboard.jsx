@@ -6,6 +6,7 @@ import {
   Sparkles, AlertTriangle, Mars, Venus,
 } from 'lucide-react'
 import { useData } from '../context/DataContext'
+import { useAuth } from '../context/AuthContext'
 import { useLmsBase, lmsPath } from '../lib/lmsPaths'
 
 function MiniBar({ label, value, max, color = '#fb923c' }) {
@@ -25,7 +26,14 @@ function MiniBar({ label, value, max, color = '#fb923c' }) {
 
 export default function Dashboard() {
   const { students, courses, faculty, profiles } = useData()
+  const { currentUser } = useAuth()
   const base = useLmsBase()
+  const isFaculty = currentUser?.role === 'Faculty'
+  const myFacultyId = currentUser?.id
+  const facultyHubPath =
+    isFaculty && myFacultyId != null && myFacultyId !== ''
+      ? lmsPath(base, `/faculty/${myFacultyId}`)
+      : lmsPath(base, '/faculty')
 
   const s = useMemo(() => {
     const enrolled  = students.filter(x => x.enrollmentStatus === 'Enrolled').length
@@ -149,11 +157,11 @@ export default function Dashboard() {
               <span className="dash-stat-tile-label">Courses</span>
             </span>
           </Link>
-          <Link to={lmsPath(base, '/faculty')} className="dash-stat-tile dash-stat-tile--link">
+          <Link to={facultyHubPath} className="dash-stat-tile dash-stat-tile--link">
             <span className="dash-stat-tile-icon"><UserCircle size={20} strokeWidth={2} /></span>
             <span className="dash-stat-tile-copy">
-              <span className="dash-stat-tile-value">{faculty.length}</span>
-              <span className="dash-stat-tile-label">Faculty</span>
+              <span className="dash-stat-tile-value">{isFaculty ? 1 : faculty.length}</span>
+              <span className="dash-stat-tile-label">{isFaculty ? 'My profile' : 'Faculty'}</span>
             </span>
           </Link>
           <div className="dash-stat-tile">
@@ -358,10 +366,14 @@ export default function Dashboard() {
           <h3>Courses</h3>
           <p>Manage BSIT, BSCS, BSIS and other CCS programs.</p>
         </Link>
-        <Link to={lmsPath(base, '/faculty')} className="action-card">
+        <Link to={facultyHubPath} className="action-card">
           <UserCircle size={28} />
-          <h3>Faculty</h3>
-          <p>Manage CCS faculty members, positions, and contact information.</p>
+          <h3>{isFaculty ? 'My profile' : 'Faculty'}</h3>
+          <p>
+            {isFaculty
+              ? 'Open your faculty directory record. Academic assignments are updated by MIS.'
+              : 'Manage CCS faculty members, positions, and contact information.'}
+          </p>
         </Link>
       </section>
     </div>

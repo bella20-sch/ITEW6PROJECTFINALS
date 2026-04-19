@@ -52,6 +52,7 @@ export default function App() {
         />
         <Route path="students/:id" element={<StudentProfile />} />
         <Route path="courses" element={<Courses />} />
+        <Route path="faculty/:id" element={<Faculty />} />
         <Route path="faculty" element={<Faculty />} />
         <Route path="reports" element={<Reports />} />
       </Route>
@@ -95,6 +96,7 @@ export default function App() {
         />
         <Route path="students/:id" element={<StudentProfile />} />
         <Route path="courses" element={<Courses />} />
+        <Route path="faculty/:id" element={<Faculty />} />
         <Route path="faculty" element={<Faculty />} />
         <Route path="reports" element={<Reports />} />
         <Route path="workspace" element={<Workspace />} />

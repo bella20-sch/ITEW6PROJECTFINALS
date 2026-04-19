@@ -14,11 +14,13 @@ export default function Sidebar({ open, onClose, collapsed }) {
   const { currentUser } = useAuth()
   let items = navItems
   if (currentUser?.role === 'Faculty') {
+    const fid = currentUser?.id
+    const profilePath = fid != null && fid !== '' ? `faculty/${fid}` : 'faculty'
     items = [
       { path: '', icon: LayoutDashboard, label: 'Dashboard' },
       { path: 'students', icon: Users, label: 'My Students' },
       { path: 'courses', icon: BookOpen, label: 'My Courses' },
-      { path: 'faculty', icon: UserCircle, label: 'My Profile' },
+      { path: profilePath, icon: UserCircle, label: 'My Profile', end: true },
       { path: 'workspace', icon: ClipboardList, label: 'Teaching Workspace' },
     ]
   } else if (currentUser?.role === 'Student') {

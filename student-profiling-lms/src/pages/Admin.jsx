@@ -39,6 +39,14 @@ const defaultFaculty = {
   section: '',
 }
 
+const defaultTeachingLoadForm = () => ({
+  facultyID: '',
+  courseID: '',
+  section: '',
+  subjectCode: '',
+  subjectTitle: '',
+})
+
 export default function Admin() {
   const { token } = useAuth()
   const { departments, courses, faculty, students, reloadDirectory } = useData()
@@ -48,6 +56,11 @@ export default function Admin() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+
+  const [tlForm, setTlForm] = useState(defaultTeachingLoadForm)
+  const [tlBusy, setTlBusy] = useState(false)
+  const [tlError, setTlError] = useState('')
+  const [tlSuccess, setTlSuccess] = useState('')
 
   useEffect(() => {
     if (!departments.length || !courses.length) return
@@ -157,6 +170,44 @@ export default function Admin() {
         section: '',
         studentType: 'Regular',
       })
+    }
+  }
+
+  const tlFacultyRow = faculty.find((f) => String(f.facultyID) === String(tlForm.facultyID))
+  const tlCoursesPool = tlFacultyRow
+    ? courses.filter((c) => Number(c.departmentID) === Number(tlFacultyRow.departmentID))
+    : []
+
+  const canSubmitTeachingLoad =
+    tlForm.facultyID &&
+    tlForm.courseID &&
+    tlForm.section.trim() &&
+    tlForm.subjectCode.trim() &&
+    tlForm.subjectTitle.trim()
+
+  const handleTeachingLoadSubmit = async (e) => {
+    e.preventDefault()
+    setTlBusy(true)
+    setTlError('')
+    setTlSuccess('')
+    try {
+      await apiFetch('/api/admin/teaching-loads', {
+        token,
+        method: 'POST',
+        body: {
+          facultyID: Number(tlForm.facultyID),
+          courseID: Number(tlForm.courseID),
+          section: tlForm.section.trim(),
+          subjectCode: tlForm.subjectCode.trim(),
+          subjectTitle: tlForm.subjectTitle.trim(),
+        },
+      })
+      setTlSuccess('Class / subject assignment added for that faculty member.')
+      setTlForm(defaultTeachingLoadForm())
+    } catch (err) {
+      setTlError(err?.message || 'Failed to save teaching assignment.')
+    } finally {
+      setTlBusy(false)
     }
   }
 
@@ -402,6 +453,122 @@ export default function Admin() {
                 </button>
                 <button type="submit" className="btn btn-primary admin-submit-btn" disabled={!canSubmit || busy}>
                   {busy ? 'Creating…' : `Create ${mode === 'student' ? 'student' : 'faculty'} account`}
+                </button>
+              </div>
+            </form>
+          </section>
+
+          <section className="admin-panel admin-panel--canvas" aria-labelledby="admin-tl-title">
+            <div className="admin-panel-top">
+              <div className="admin-panel-head">
+                <h3 id="admin-tl-title" className="admin-panel-title">Assign class to faculty</h3>
+                <p className="admin-panel-desc">
+                  Add a subject line (same program and section as the roster MIS uses). Faculty cannot add these themselves from the workspace.
+                </p>
+              </div>
+            </div>
+            {tlError && (
+              <div className="admin-alert admin-alert--error" role="alert">
+                <AlertCircle size={18} aria-hidden />
+                <span>{tlError}</span>
+              </div>
+            )}
+            {tlSuccess && (
+              <div className="admin-alert admin-alert--success" role="status">
+                <CheckCircle2 size={18} aria-hidden />
+                <span>{tlSuccess}</span>
+              </div>
+            )}
+            <form onSubmit={handleTeachingLoadSubmit} className="form admin-form admin-form--deck">
+              <section className="admin-form-section" aria-labelledby="admin-tl-fields">
+                <h4 id="admin-tl-fields" className="admin-form-section-title">
+                  <Layers size={18} aria-hidden />
+                  Teaching load
+                </h4>
+                <div className="admin-form-grid admin-form-grid--academic">
+                  <div className="admin-form-cell">
+                    <label htmlFor="admin-tl-faculty">Faculty</label>
+                    <select
+                      id="admin-tl-faculty"
+                      value={tlForm.facultyID}
+                      onChange={(e) => {
+                        const fid = e.target.value
+                        const f = faculty.find((x) => String(x.facultyID) === fid)
+                        const pool = f
+                          ? courses.filter((c) => Number(c.departmentID) === Number(f.departmentID))
+                          : []
+                        setTlForm({
+                          ...defaultTeachingLoadForm(),
+                          facultyID: fid,
+                          courseID: pool[0] ? String(pool[0].courseID) : '',
+                        })
+                      }}
+                      required
+                      disabled={!faculty.length}
+                    >
+                      <option value="">Select faculty…</option>
+                      {faculty.map((f) => (
+                        <option key={f.facultyID} value={f.facultyID}>
+                          {f.lastName}, {f.firstName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="admin-form-cell">
+                    <label htmlFor="admin-tl-course">Program (course)</label>
+                    <select
+                      id="admin-tl-course"
+                      value={tlForm.courseID}
+                      onChange={(e) => setTlForm((p) => ({ ...p, courseID: e.target.value }))}
+                      required
+                      disabled={!tlCoursesPool.length}
+                    >
+                      {!tlCoursesPool.length ? (
+                        <option value="">Select a faculty member first</option>
+                      ) : (
+                        tlCoursesPool.map((c) => (
+                          <option key={c.courseID} value={c.courseID}>
+                            {c.courseCode} — {c.courseName}
+                          </option>
+                        ))
+                      )}
+                    </select>
+                  </div>
+                  <div className="admin-form-cell">
+                    <label htmlFor="admin-tl-section">Section</label>
+                    <input
+                      id="admin-tl-section"
+                      value={tlForm.section}
+                      onChange={(e) => setTlForm((p) => ({ ...p, section: e.target.value }))}
+                      placeholder="e.g. 4IT-B"
+                      required
+                    />
+                  </div>
+                  <div className="admin-form-cell">
+                    <label htmlFor="admin-tl-code">Subject code</label>
+                    <input
+                      id="admin-tl-code"
+                      value={tlForm.subjectCode}
+                      onChange={(e) => setTlForm((p) => ({ ...p, subjectCode: e.target.value }))}
+                      placeholder="CCS101"
+                      required
+                    />
+                  </div>
+                  <div className="admin-form-cell admin-form-cell--full">
+                    <label htmlFor="admin-tl-title-field">Subject title</label>
+                    <input
+                      id="admin-tl-title-field"
+                      value={tlForm.subjectTitle}
+                      onChange={(e) => setTlForm((p) => ({ ...p, subjectTitle: e.target.value }))}
+                      placeholder="Computer Programming 1"
+                      required
+                    />
+                  </div>
+                </div>
+              </section>
+              <div className="admin-form-actions form-actions">
+                <button type="submit" className="btn btn-primary" disabled={!canSubmitTeachingLoad || tlBusy}>
+                  {tlBusy ? 'Saving…' : 'Add teaching assignment'}
                 </button>
               </div>
             </form>

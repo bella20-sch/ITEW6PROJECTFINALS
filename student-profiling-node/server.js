@@ -237,8 +237,15 @@ app.put('/api/meta/:type/:id', authenticate, (req, res) => {
     const idKey = type.replace(/s$/, '') + 'ID';
     const idx = db[type].findIndex(item => item[idKey] == id);
     if (idx === -1) return res.status(404).json({ error: 'Item not found' });
-    
-    db[type][idx] = { ...db[type][idx], ...req.body, [idKey]: Number(id) };
+
+    let body = { ...req.body };
+    if (req.user?.role === 'Faculty' && type === 'faculty' && Number(id) === Number(req.user.id)) {
+        delete body.courseID;
+        delete body.section;
+        delete body.departmentID;
+    }
+
+    db[type][idx] = { ...db[type][idx], ...body, [idKey]: Number(id) };
     saveDb(db);
     return res.json(db[type][idx]);
 });
@@ -592,6 +599,35 @@ app.post('/api/admin/faculty', authenticate, requireAdmin, (req, res) => {
     return res.status(201).json(omitPassword(newFaculty));
 });
 
+/** MIS assigns class lines (subject + program section) to a faculty member. */
+app.post('/api/admin/teaching-loads', authenticate, requireAdmin, (req, res) => {
+    const db = getDb();
+    const facultyID = Number(req.body?.facultyID);
+    const courseID = Number(req.body?.courseID);
+    const section = String(req.body?.section || '').trim();
+    const subjectCode = String(req.body?.subjectCode || '').trim();
+    const subjectTitle = String(req.body?.subjectTitle || '').trim();
+    const fac = db.faculty.find((f) => f.facultyID === facultyID);
+    if (!fac) return res.status(400).json({ message: 'Faculty not found.' });
+    if (!Number.isFinite(courseID)) return res.status(400).json({ message: 'Valid course (program) is required.' });
+    if (!section) return res.status(400).json({ message: 'Section is required.' });
+    if (!subjectCode || !subjectTitle) {
+        return res.status(400).json({ message: 'Subject code and title are required.' });
+    }
+    const arr = db.teachingLoads || (db.teachingLoads = []);
+    const row = {
+        teachingLoadID: nextAutoId(arr, 'teachingLoadID'),
+        facultyID,
+        courseID,
+        section,
+        subjectCode,
+        subjectTitle,
+    };
+    arr.push(row);
+    saveDb(db);
+    return res.status(201).json(row);
+});
+
 // --- LMS workspace: teaching loads, class activities, materials (faculty / student) ---
 
 app.get('/api/me/assignments', authenticate, (req, res) => {
@@ -635,37 +671,11 @@ app.get('/api/me/assignments', authenticate, (req, res) => {
     return res.json([]);
 });
 
-app.post('/api/faculty/teaching-loads', authenticate, requireFaculty, (req, res) => {
-    const db = getDb();
-    const fid = Number(req.user.id);
-    const f = db.faculty.find((x) => x.facultyID === fid);
-    if (!f || !f.courseID || !String(f.section || '').trim()) {
-        return res.status(400).json({ message: 'Your profile must have course and section set (MIS can update faculty).' });
-    }
-    const subjectCode = String(req.body?.subjectCode || '').trim();
-    const subjectTitle = String(req.body?.subjectTitle || '').trim();
-    if (!subjectCode || !subjectTitle) {
-        return res.status(400).json({ message: 'Subject code and title are required.' });
-    }
-    const arr = db.teachingLoads;
-    const row = {
-        teachingLoadID: nextAutoId(arr, 'teachingLoadID'),
-        facultyID: fid,
-        courseID: Number(f.courseID),
-        section: String(f.section).trim(),
-        subjectCode,
-        subjectTitle,
-    };
-    arr.push(row);
-    saveDb(db);
-    return res.status(201).json({
-        id: row.teachingLoadID,
-        teachingLoadId: row.teachingLoadID,
-        ...row,
-        displayLabel: `${subjectTitle} (${subjectCode}) · Section ${row.section}`,
-        students: [],
-    });
-});
+app.post('/api/faculty/teaching-loads', authenticate, (req, res) =>
+    res.status(403).json({
+        message: 'Only MIS/Admin can assign classes or subjects to faculty. Use the provisioning console.',
+    }),
+);
 
 app.get('/api/me/activities', authenticate, (req, res) => {
     const db = getDb();

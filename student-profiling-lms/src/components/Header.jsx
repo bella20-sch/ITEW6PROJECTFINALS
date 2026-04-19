@@ -34,6 +34,12 @@ export default function Header({ onMenuClick, sidebarCollapsed, onToggleSidebarC
 
   const isStudentProfile = /^\/(?:mis\/)?students\/\d+$/.test(path)
   const isStudentEdit = /^\/(?:mis\/)?students\/\d+\/edit$/.test(path)
+  const facultyPathMatch = path.match(/^\/(?:mis\/)?faculty\/(\d+)$/)
+  const facultyRouteTitle = facultyPathMatch
+    ? currentUser?.role === 'Faculty' && Number(facultyPathMatch[1]) === Number(currentUser?.id)
+      ? 'My profile'
+      : 'Faculty'
+    : null
 
   const toggleColorMode = useCallback(() => {
     const next = colorMode === 'dark' ? 'light' : 'dark'
@@ -43,11 +49,13 @@ export default function Header({ onMenuClick, sidebarCollapsed, onToggleSidebarC
   const title =
     path === '/mis'
       ? 'MIS dashboard'
-      : isStudentProfile
-        ? 'Student profile'
-        : isStudentEdit
-          ? 'Edit student profile'
-          : pageTitles[appPath] || pageTitles[path] || 'Student Profiling LMS'
+      : facultyRouteTitle
+        ? facultyRouteTitle
+        : isStudentProfile
+          ? 'Student profile'
+          : isStudentEdit
+            ? 'Edit student profile'
+            : pageTitles[appPath] || pageTitles[path] || 'Student Profiling LMS'
 
   const userDisplayName = currentUser
     ? [currentUser.firstName, currentUser.lastName].filter(Boolean).join(' ').trim() ||

@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { useData } from '../context/DataContext'
 import { apiFetch } from '../lib/api'
 import { useLmsBase, lmsPath } from '../lib/lmsPaths'
-import { BookOpen, ClipboardList, GraduationCap, Send, Users, FileText, PlusCircle } from 'lucide-react'
+import { BookOpen, ClipboardList, GraduationCap, Send, Users, FileText } from 'lucide-react'
 
 export default function Workspace() {
   const { token, currentUser } = useAuth()
@@ -18,7 +18,6 @@ export default function Workspace() {
   const [busyId, setBusyId] = useState('')
   const [msg, setMsg] = useState('')
 
-  const [newSubject, setNewSubject] = useState({ subjectCode: '', subjectTitle: '' })
   const [actForm, setActForm] = useState({
     teachingLoadId: '',
     title: '',
@@ -177,7 +176,7 @@ export default function Workspace() {
         {!assignments.length && (
           <p className="muted workspace-empty">
             {isFaculty
-              ? 'No teaching assignments yet. Ask MIS to link your account to a course and section, then add subjects below.'
+              ? 'No teaching assignments yet. Ask MIS to assign your classes (program, section, and subject) in the provisioning console.'
               : 'No class offerings match your program and section yet.'}
           </p>
         )}
@@ -222,65 +221,6 @@ export default function Workspace() {
 
       {isFaculty && (
         <>
-          <section className="workspace-section workspace-card-block">
-            <h3 className="workspace-section-title">
-              <PlusCircle size={20} strokeWidth={2} aria-hidden />
-              Add another subject (same section)
-            </h3>
-            <p className="muted workspace-hint">
-              Subjects must belong to your MIS-assigned course and section (e.g. Computer Programming 1 — CCS101 — 4IT-B).
-            </p>
-            <form
-              className="workspace-form"
-              onSubmit={async (e) => {
-                e.preventDefault()
-                setBusyId('addSubject')
-                setMsg('')
-                try {
-                  await apiFetch('/api/faculty/teaching-loads', {
-                    token,
-                    method: 'POST',
-                    body: {
-                      subjectCode: newSubject.subjectCode.trim(),
-                      subjectTitle: newSubject.subjectTitle.trim(),
-                    },
-                  })
-                  setMsg('Subject offering added.')
-                  setNewSubject({ subjectCode: '', subjectTitle: '' })
-                  await loadAll()
-                } catch (err) {
-                  setMsg(err?.message || 'Could not add subject.')
-                } finally {
-                  setBusyId('')
-                }
-              }}
-            >
-              <div className="workspace-form-row">
-                <label>
-                  Subject code
-                  <input
-                    value={newSubject.subjectCode}
-                    onChange={(e) => setNewSubject((p) => ({ ...p, subjectCode: e.target.value }))}
-                    placeholder="CCS101"
-                    required
-                  />
-                </label>
-                <label>
-                  Subject title
-                  <input
-                    value={newSubject.subjectTitle}
-                    onChange={(e) => setNewSubject((p) => ({ ...p, subjectTitle: e.target.value }))}
-                    placeholder="Computer Programming 1"
-                    required
-                  />
-                </label>
-              </div>
-              <button type="submit" className="btn btn-primary" disabled={busyId === 'addSubject'}>
-                {busyId === 'addSubject' ? 'Saving…' : 'Add subject'}
-              </button>
-            </form>
-          </section>
-
           <section className="workspace-section workspace-card-block">
             <h3 className="workspace-section-title">
               <ClipboardList size={20} strokeWidth={2} aria-hidden />
