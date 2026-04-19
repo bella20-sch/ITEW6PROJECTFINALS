@@ -4425,3 +4425,390 @@ a {
     padding: 0.5rem 0.75rem;
   }
 }
+
+/* Faculty / student LMS workspace */
+.workspace-page {
+  max-width: 1100px;
+}
+
+.workspace-hero {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+}
+
+.workspace-hero-icon {
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-lg);
+  background: var(--color-accent-muted);
+  color: var(--color-accent-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.workspace-hero-title {
+  margin: 0 0 0.35rem;
+  font-size: 1.5rem;
+}
+
+.workspace-hero-sub {
+  margin: 0;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+.workspace-banner {
+  padding: 0.65rem 1rem;
+  border-radius: var(--radius-md);
+  background: var(--color-accent-muted);
+  color: var(--color-text-primary);
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+
+.workspace-section {
+  margin-bottom: 2rem;
+}
+
+.workspace-section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.1rem;
+  margin: 0 0 0.75rem;
+}
+
+.workspace-empty {
+  margin: 0.25rem 0 0;
+}
+
+.workspace-hint {
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+}
+
+.workspace-load-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.workspace-load-card {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 1rem 1.1rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.workspace-load-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.workspace-load-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 0.2rem 0.45rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-accent-muted);
+  color: var(--color-accent-dark);
+}
+
+.workspace-load-section {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.workspace-load-subject {
+  margin: 0 0 0.25rem;
+  font-size: 1.05rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem;
+}
+
+.workspace-load-code {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.workspace-load-meta {
+  margin: 0 0 0.75rem;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+}
+
+.workspace-roster {
+  border-top: 1px solid var(--color-border);
+  padding-top: 0.75rem;
+}
+
+.workspace-roster-head {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.workspace-roster-empty {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.workspace-roster-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.workspace-roster-list li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px dashed var(--color-border);
+  font-size: 0.88rem;
+}
+
+.workspace-roster-link {
+  font-weight: 600;
+  color: var(--color-accent-dark);
+  text-decoration: none;
+}
+
+.workspace-roster-link:hover {
+  text-decoration: underline;
+}
+
+.workspace-card-block {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem 1.35rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.workspace-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.workspace-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.88rem;
+  font-weight: 500;
+}
+
+.workspace-form input,
+.workspace-form textarea,
+.workspace-form select {
+  padding: 0.5rem 0.65rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  font: inherit;
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+}
+
+.workspace-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+@media (max-width: 640px) {
+  .workspace-form-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.workspace-check {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 0.5rem !important;
+}
+
+.workspace-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.workspace-material-card {
+  padding: 1rem 1.1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-secondary);
+}
+
+.workspace-material-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.workspace-chip {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.workspace-material-body {
+  margin: 0.35rem 0 0;
+  white-space: pre-wrap;
+  font-size: 0.9rem;
+}
+
+.workspace-link {
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.workspace-activity-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.workspace-activity-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 1.1rem 1.25rem;
+  background: var(--color-bg-card);
+  box-shadow: var(--shadow-sm);
+}
+
+.workspace-activity-top h4 {
+  margin: 0 0 0.25rem;
+}
+
+.workspace-activity-classline {
+  margin: 0 0 0.35rem;
+  font-size: 0.88rem;
+}
+
+.workspace-activity-desc {
+  margin: 0.35rem 0;
+  font-size: 0.9rem;
+}
+
+.workspace-student-submit {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.workspace-grade-box {
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md);
+  background: var(--color-accent-muted);
+  font-size: 0.92rem;
+}
+
+.workspace-submissions {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.workspace-submissions h5 {
+  margin: 0 0 0.65rem;
+  font-size: 0.95rem;
+}
+
+.workspace-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.workspace-table th,
+.workspace-table td {
+  text-align: left;
+  padding: 0.45rem 0.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.workspace-table th {
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+.workspace-grade-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.workspace-grade-form input[type='number'] {
+  width: 4.5rem;
+}
+
+.workspace-grade-form input[type='text'] {
+  min-width: 120px;
+  flex: 1;
+}
+
+.workspace-pill {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
+  border-radius: var(--radius-full);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.workspace-pill--done {
+  background: rgba(16, 185, 129, 0.15);
+  color: #059669;
+}
+
+.workspace-pill--pending {
+  background: rgba(251, 146, 60, 0.2);
+  color: #c2410c;
+}
+
+.workspace-pill--open {
+  background: rgba(148, 163, 184, 0.25);
+  color: var(--color-text-secondary);
+}
+
+.workspace-sub-detail {
+  margin-top: 0.5rem;
+  font-size: 0.88rem;
+}
+
+.workspace-sub-pre {
+  margin: 0.35rem 0 0;
+  padding: 0.65rem 0.75rem;
+  background: var(--color-bg-primary);
+  border-radius: var(--radius-sm);
+  white-space: pre-wrap;
+  overflow-x: auto;
+  font-size: 0.82rem;
+}
+
+.small {
+  font-size: 0.8rem;
+}

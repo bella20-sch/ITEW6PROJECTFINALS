@@ -713,7 +713,7 @@ app.post('/api/student/activities/:id/submit', authenticate, requireStudent, (re
     if (!content) return res.status(400).json({ message: 'Submission text is required.' });
     const arr = db.classActivitySubmissions;
     let sub = arr.find((s) => Number(s.classActivityID) === actId && Number(s.studentID) === sid);
-    if (sub && sub.score != null && sub.score !== '') {
+    if (sub && sub.gradedAt) {
         return res.status(400).json({ message: 'This activity is already graded.' });
     }
     const now = new Date().toISOString();
