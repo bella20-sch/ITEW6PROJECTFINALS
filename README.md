@@ -54,6 +54,12 @@ After login, **MIS administrators** land on **[http://localhost:3000/mis](http:/
 - **Email**: `maria.santos@school.edu`
 - **Password**: `student123`
 
+### Other seed accounts (Node `database.json`)
+
+Every seed **student** uses **`student123`**. Other students in the sample file include `james.rodriguez@school.edu`, `sofia.chen@school.edu`, `mendozamayensofia31@gmail.com`, `nikol@email.com`, and `mourine.bella.student@school.edu` (student login for the same person who also has a faculty account under `bellamourine20@gmail.com`).
+
+Every seed **faculty** member without a custom password uses **`faculty123`**. `hyune.hwang@school.edu` keeps **`password123`**. Faculty `bellamourine20@gmail.com` uses **`faculty123`**.
+
 New faculty and student accounts created from **MIS → Account provisioning** receive the email and password you set there; they sign in on the same login page.
 
 The old path **`/admin`** redirects to **`/mis/provision`**.
