@@ -1,6 +1,8 @@
 import { useState } from 'react'
+import { Navigate } from 'react-router-dom'
 import { useData } from '../context/DataContext'
 import { useAuth } from '../context/AuthContext'
+import { useLmsBase, lmsPath } from '../lib/lmsPaths'
 import { useToast } from '../context/ToastContext'
 import { BookOpen, Plus, Pencil, Trash2, Building2, Sparkles, Layers } from 'lucide-react'
 import Modal from '../components/Modal'
@@ -10,6 +12,7 @@ export default function Courses() {
   const { departments, crud } = useData()
   const { currentUser } = useAuth()
   const { showToast } = useToast()
+  const base = useLmsBase()
   const isAdmin = currentUser?.role === 'Admin'
   const [modal, setModal] = useState({ open: false, mode: 'add', item: null })
   const [form, setForm] = useState({ courseCode: '', courseName: '', totalUnits: '', departmentID: '' })
@@ -72,6 +75,10 @@ export default function Courses() {
 
   const courses = crud.courses.getAll()
   const totalUnits = courses.reduce((sum, c) => sum + (Number(c.totalUnits) || 0), 0)
+
+  if (currentUser?.role === 'Faculty') {
+    return <Navigate to={lmsPath(base, '/my-classes')} replace />
+  }
 
   return (
     <div className="page">

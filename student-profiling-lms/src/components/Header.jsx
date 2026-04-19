@@ -15,6 +15,7 @@ const pageTitles = {
   '/reports': 'Reports & Queries',
   '/workspace': 'Workspace',
   '/provision': 'Account provisioning',
+  '/my-classes': 'My classes',
 }
 
 export default function Header({ onMenuClick, sidebarCollapsed, onToggleSidebarCollapse }) {
@@ -41,6 +42,12 @@ export default function Header({ onMenuClick, sidebarCollapsed, onToggleSidebarC
       : 'Faculty'
     : null
 
+  const myClassesRouteTitle = /^\/(?:mis\/)?my-classes$/.test(path)
+    ? 'My classes'
+    : /^\/(?:mis\/)?my-classes\/\d+$/.test(path)
+      ? 'Class section'
+      : null
+
   const toggleColorMode = useCallback(() => {
     const next = colorMode === 'dark' ? 'light' : 'dark'
     setTheme(next)
@@ -51,7 +58,9 @@ export default function Header({ onMenuClick, sidebarCollapsed, onToggleSidebarC
       ? 'MIS dashboard'
       : facultyRouteTitle
         ? facultyRouteTitle
-        : isStudentProfile
+        : myClassesRouteTitle
+          ? myClassesRouteTitle
+          : isStudentProfile
           ? 'Student profile'
           : isStudentEdit
             ? 'Edit student profile'

@@ -15,6 +15,8 @@ import Login from './pages/Login'
 import Admin from './pages/Admin'
 import RequireAdmin from './components/RequireAdmin'
 import Workspace from './pages/Workspace'
+import FacultyMyClasses from './pages/FacultyMyClasses'
+import FacultyClassSection from './pages/FacultyClassSection'
 
 export default function App() {
   return (
@@ -100,6 +102,8 @@ export default function App() {
         <Route path="faculty" element={<Faculty />} />
         <Route path="reports" element={<Reports />} />
         <Route path="workspace" element={<Workspace />} />
+        <Route path="my-classes/:teachingLoadId" element={<FacultyClassSection />} />
+        <Route path="my-classes" element={<FacultyMyClasses />} />
       </Route>
     </Routes>
   )

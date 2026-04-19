@@ -19,7 +19,7 @@ export default function Sidebar({ open, onClose, collapsed }) {
     items = [
       { path: '', icon: LayoutDashboard, label: 'Dashboard' },
       { path: 'students', icon: Users, label: 'My Students' },
-      { path: 'courses', icon: BookOpen, label: 'My Courses' },
+      { path: 'my-classes', icon: BookOpen, label: 'My Classes' },
       { path: profilePath, icon: UserCircle, label: 'My Profile', end: true },
       { path: 'workspace', icon: ClipboardList, label: 'Teaching Workspace' },
     ]
