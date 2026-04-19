@@ -10,6 +10,7 @@ export default function Students() {
   const { students, courses, departments } = useData()
   const { currentUser } = useAuth()
   const isAdmin = currentUser?.role === 'Admin'
+  const isFaculty = currentUser?.role === 'Faculty'
   const base = useLmsBase()
 
   if (currentUser?.role === 'Student') {
@@ -80,13 +81,15 @@ export default function Students() {
               <span className="students-hero-badge-text">CCS · Student directory</span>
             </div>
             <h2 id="students-hero-title" className="students-hero-title">
-              Student records & profiles
+              {isFaculty ? 'Your sections & advisees' : 'Student records & profiles'}
             </h2>
             <p className="students-hero-sub">
-              Search and filter the CCS student body by course, year level, enrollment, and type. Administrators can register new students from here.
+              {isFaculty
+                ? 'Only students in sections you teach or advise appear here. Use search and filters to find someone in your roster.'
+                : 'Search and filter the CCS student body by course, year level, enrollment, and type. Administrators can register new students from here.'}
             </p>
             <ul className="students-hero-tags">
-              <li><Sparkles size={12} strokeWidth={2} aria-hidden /> {students.length} students</li>
+              <li><Sparkles size={12} strokeWidth={2} aria-hidden /> {students.length} {isFaculty ? 'in your sections' : 'students'}</li>
               <li><UserCheck size={12} strokeWidth={2} aria-hidden /> {enrolledCount} enrolled</li>
               <li><BookOpen size={12} strokeWidth={2} aria-hidden /> {courses.length} programs</li>
             </ul>

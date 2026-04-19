@@ -276,6 +276,7 @@ export default function StudentProfile() {
   const { currentUser, token } = useAuth()
   const isAdmin = currentUser?.role === 'Admin'
   const isStudent = currentUser?.role === 'Student'
+  const isFaculty = currentUser?.role === 'Faculty'
   const base = useLmsBase()
 
   const myStudentId = Number(currentUser?.studentID ?? currentUser?.id)
@@ -283,6 +284,7 @@ export default function StudentProfile() {
 
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
+  const [loadErrorStatus, setLoadErrorStatus] = useState(0)
   const [subModal, setSubModal] = useState({ open: false, type: null, item: null })
   const [confirm, setConfirm] = useState({ open: false, title: '', message: '', onConfirm: null, danger: false })
   const [enrolledLoads, setEnrolledLoads] = useState([])
@@ -299,9 +301,17 @@ export default function StudentProfile() {
     let cancelled = false
     if (profiles[Number(id)]) { setLoading(false); return }
     setLoading(true)
+    setLoadError('')
+    setLoadErrorStatus(0)
     crud.students.fetchOne(id)
       .then(() => { if (!cancelled) setLoading(false) })
-      .catch(e => { if (!cancelled) { setLoadError(e?.message || 'Failed to load.'); setLoading(false) } })
+      .catch(e => {
+        if (!cancelled) {
+          setLoadError(e?.message || 'Failed to load.')
+          setLoadErrorStatus(Number(e?.status) || 0)
+          setLoading(false)
+        }
+      })
     return () => { cancelled = true }
   }, [id, crud.students, profiles])
 
@@ -334,12 +344,14 @@ export default function StudentProfile() {
 
   if (loading) return <div className="page"><p className="muted">Loading student profile…</p></div>
   if (!student) {
+    const back = isStudent ? <Link to="/">Back to dashboard</Link> : <Link to={lmsPath(base, '/students')}>Back to directory</Link>
     return (
       <div className="page">
-        <p>
-          {loadError || 'Student not found.'}{' '}
-          {isStudent ? <Link to="/">Back to dashboard</Link> : <Link to={lmsPath(base, '/students')}>Back</Link>}
-        </p>
+        <p>{loadError || 'Student not found.'}</p>
+        {isFaculty && loadErrorStatus === 403 ? (
+          <p className="muted">If you need access to this student, they must be enrolled in a section you handle.</p>
+        ) : null}
+        <p>{back}</p>
       </div>
     )
   }

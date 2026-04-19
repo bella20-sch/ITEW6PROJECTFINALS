@@ -70,6 +70,27 @@ const studentMatchesLoad = (student, load) => {
 const nextAutoId = (arr, idKey) =>
     Array.isArray(arr) && arr.length ? Math.max(...arr.map((i) => Number(i[idKey]) || 0)) + 1 : 1;
 
+/** Course + section string for matching students to a faculty assignment. */
+const sectionEnrollmentKey = (courseID, section) =>
+    `${Number(courseID)}|${String(section || '').trim()}`;
+
+const facultyManagedSectionKeys = (db, facultyId) => {
+    const keys = new Set();
+    const fac = db.faculty.find((f) => f.facultyID === Number(facultyId));
+    if (fac && fac.courseID != null && String(fac.section || '').trim()) {
+        keys.add(sectionEnrollmentKey(fac.courseID, fac.section));
+    }
+    (db.teachingLoads || []).forEach((tl) => {
+        if (Number(tl.facultyID) === Number(facultyId) && tl.courseID != null && String(tl.section || '').trim()) {
+            keys.add(sectionEnrollmentKey(tl.courseID, tl.section));
+        }
+    });
+    return keys;
+};
+
+const studentInFacultyManagedSections = (student, keys) =>
+    keys.size > 0 && keys.has(sectionEnrollmentKey(student.courseID, student.section));
+
 const normEmail = (v) => String(v || '').trim().toLowerCase();
 
 // --- AUTH ROUTE ---
@@ -159,12 +180,36 @@ app.get('/api/meta/:type', authenticate, (req, res) => {
     const type = req.params.type;
     if (!db[type]) return res.status(404).json({ error: 'Not found' });
     if (type === 'faculty') {
+        if (req.user?.role === 'Faculty') {
+            const row = db.faculty.find((f) => f.facultyID === Number(req.user.id));
+            return res.json(row ? [omitPassword(row)] : []);
+        }
         return res.json(db.faculty.map(omitPassword));
+    }
+    if (type === 'courses' && req.user?.role === 'Faculty') {
+        const allowed = new Set();
+        const f = db.faculty.find((x) => x.facultyID === Number(req.user.id));
+        if (f?.courseID != null) allowed.add(Number(f.courseID));
+        (db.teachingLoads || []).forEach((tl) => {
+            if (Number(tl.facultyID) === Number(req.user.id) && tl.courseID != null) {
+                allowed.add(Number(tl.courseID));
+            }
+        });
+        if (!allowed.size) return res.json([]);
+        return res.json(db.courses.filter((c) => allowed.has(Number(c.courseID))));
+    }
+    if (type === 'departments' && req.user?.role === 'Faculty') {
+        const f = db.faculty.find((x) => x.facultyID === Number(req.user.id));
+        if (!f?.departmentID) return res.json([]);
+        return res.json(db.departments.filter((d) => Number(d.departmentID) === Number(f.departmentID)));
     }
     return res.json(db[type]);
 });
 
 app.post('/api/meta/:type', authenticate, (req, res) => {
+    if (req.user?.role === 'Faculty') {
+        return res.status(403).json({ message: 'Faculty cannot modify directory data.' });
+    }
     const db = getDb();
     const type = req.params.type;
     if (!db[type]) return res.status(404).json({ error: 'Not found' });
@@ -180,8 +225,13 @@ app.post('/api/meta/:type', authenticate, (req, res) => {
 });
 
 app.put('/api/meta/:type/:id', authenticate, (req, res) => {
-    const db = getDb();
     const { type, id } = req.params;
+    if (req.user?.role === 'Faculty') {
+        if (type !== 'faculty' || Number(id) !== Number(req.user.id)) {
+            return res.status(403).json({ message: 'You can only update your own faculty profile.' });
+        }
+    }
+    const db = getDb();
     if (!db[type]) return res.status(404).json({ error: 'Not found' });
     
     const idKey = type.replace(/s$/, '') + 'ID';
@@ -194,6 +244,9 @@ app.put('/api/meta/:type/:id', authenticate, (req, res) => {
 });
 
 app.delete('/api/meta/:type/:id', authenticate, (req, res) => {
+    if (req.user?.role === 'Faculty') {
+        return res.status(403).json({ message: 'Faculty cannot delete directory records.' });
+    }
     const db = getDb();
     const { type, id } = req.params;
     if (!db[type]) return res.status(404).json({ error: 'Not found' });
@@ -204,6 +257,17 @@ app.delete('/api/meta/:type/:id', authenticate, (req, res) => {
     return res.json({ ok: true });
 });
 
+
+const assertFacultyMayAccessStudent = (db, req, studentId) => {
+    if (req.user?.role !== 'Faculty') return { ok: true };
+    const student = db.students.find((s) => s.studentID === Number(studentId));
+    if (!student) return { ok: false, status: 404, msg: 'Student not found' };
+    const keys = facultyManagedSectionKeys(db, Number(req.user.id));
+    if (!keys.size || !studentInFacultyManagedSections(student, keys)) {
+        return { ok: false, status: 403, msg: 'You can only access students in your assigned sections.' };
+    }
+    return { ok: true };
+};
 
 // --- SUB-RECORD CRUD (skills, affiliations, violations, activities, medical, guardians, academic) ---
 const subCollections = {
@@ -221,6 +285,11 @@ app.post('/api/students/:studentId/:collection', authenticate, (req, res) => {
   const meta = subCollections[collection];
   if (!meta) return res.status(404).json({ error: 'Unknown collection' });
   const db = getDb();
+  const facCheck = assertFacultyMayAccessStudent(db, req, studentId);
+  if (!facCheck.ok) return res.status(facCheck.status).json({ error: facCheck.msg });
+  if (req.user?.role === 'Faculty') {
+    return res.status(403).json({ message: 'Faculty cannot add student sub-records.' });
+  }
   if (!db[collection]) db[collection] = [];
   const nextId = db[collection].length > 0 ? Math.max(...db[collection].map(i => i[meta.idKey] || 0)) + 1 : 1;
   const item = { [meta.idKey]: nextId, [meta.parentKey]: Number(studentId), ...req.body };
@@ -234,6 +303,11 @@ app.put('/api/students/:studentId/:collection/:id', authenticate, (req, res) => 
   const meta = subCollections[collection];
   if (!meta) return res.status(404).json({ error: 'Unknown collection' });
   const db = getDb();
+  const facCheck = assertFacultyMayAccessStudent(db, req, studentId);
+  if (!facCheck.ok) return res.status(facCheck.status).json({ error: facCheck.msg });
+  if (req.user?.role === 'Faculty') {
+    return res.status(403).json({ message: 'Faculty cannot edit student sub-records.' });
+  }
   const idx = (db[collection] || []).findIndex(i => i[meta.idKey] == id && i[meta.parentKey] == studentId);
   if (idx === -1) return res.status(404).json({ error: 'Not found' });
   db[collection][idx] = { ...db[collection][idx], ...req.body, [meta.idKey]: Number(id), [meta.parentKey]: Number(studentId) };
@@ -246,6 +320,11 @@ app.delete('/api/students/:studentId/:collection/:id', authenticate, (req, res) 
   const meta = subCollections[collection];
   if (!meta) return res.status(404).json({ error: 'Unknown collection' });
   const db = getDb();
+  const facCheck = assertFacultyMayAccessStudent(db, req, studentId);
+  if (!facCheck.ok) return res.status(facCheck.status).json({ error: facCheck.msg });
+  if (req.user?.role === 'Faculty') {
+    return res.status(403).json({ message: 'Faculty cannot delete student sub-records.' });
+  }
   db[collection] = (db[collection] || []).filter(i => !(i[meta.idKey] == id && i[meta.parentKey] == studentId));
   saveDb(db);
   return res.json({ ok: true });
@@ -259,7 +338,16 @@ app.get('/api/students', authenticate, (req, res) => {
         const row = me ? omitPassword(me) : null;
         return res.json(row ? [row] : []);
     }
-    let studs = [...db.students];
+    let studs;
+    if (req.user?.role === 'Faculty') {
+        const keys = facultyManagedSectionKeys(db, Number(req.user.id));
+        if (!keys.size) {
+            return res.json([]);
+        }
+        studs = db.students.filter((s) => studentInFacultyManagedSections(s, keys));
+    } else {
+        studs = [...db.students];
+    }
     const { search, section, courseID, skill, studentType } = req.query;
 
     if (search) {
@@ -296,6 +384,12 @@ app.get('/api/students/:id', authenticate, (req, res) => {
     if (req.user?.role === 'Student' && Number(req.user.id) !== id) {
         return res.status(403).json({ error: 'You can only view your own profile.' });
     }
+    if (req.user?.role === 'Faculty') {
+        const keys = facultyManagedSectionKeys(db, Number(req.user.id));
+        if (!keys.size || !studentInFacultyManagedSections(student, keys)) {
+            return res.status(403).json({ error: 'You can only view students in your assigned sections.' });
+        }
+    }
 
     return res.json({
         ...omitPassword(student),
@@ -310,6 +404,9 @@ app.get('/api/students/:id', authenticate, (req, res) => {
 });
 
 app.post('/api/students', authenticate, (req, res) => {
+    if (req.user?.role === 'Faculty') {
+        return res.status(403).json({ message: 'Faculty cannot create student records.' });
+    }
     const db = getDb();
     const nextId = (db.students.length > 0 ? Math.max(...db.students.map(s => s.studentID)) : 0) + 1;
     const newStudent = { studentID: nextId, ...req.body };
@@ -321,6 +418,9 @@ app.post('/api/students', authenticate, (req, res) => {
 });
 
 app.put('/api/students/:id', authenticate, (req, res) => {
+    if (req.user?.role === 'Faculty') {
+        return res.status(403).json({ message: 'Faculty cannot edit student directory records.' });
+    }
     const db = getDb();
     const id = Number(req.params.id);
     const idx = db.students.findIndex(s => s.studentID === id);
@@ -340,6 +440,9 @@ app.put('/api/students/:id', authenticate, (req, res) => {
 });
 
 app.delete('/api/students/:id', authenticate, (req, res) => {
+    if (req.user?.role === 'Faculty') {
+        return res.status(403).json({ message: 'Faculty cannot delete students.' });
+    }
     const db = getDb();
     const id = Number(req.params.id);
     db.students = db.students.filter(s => s.studentID !== id);
