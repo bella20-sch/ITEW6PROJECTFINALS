@@ -199,22 +199,36 @@ export default function FacultyClassSection() {
         </div>
       </div>
 
-      <div className="faculty-class-term-bar">
-        <label>
-          School year
-          <input value={schoolYear} onChange={(e) => setSchoolYear(e.target.value)} className="faculty-class-term-input" />
-        </label>
-        <label>
-          Semester
-          <select value={semester} onChange={(e) => setSemester(Number(e.target.value))} className="faculty-class-term-input">
-            <option value={1}>1st semester</option>
-            <option value={2}>2nd semester</option>
-          </select>
-        </label>
-        <p className="faculty-class-term-note muted small">
-          Semester grade = average of prelim, midterm, and finals period scores. Year level progression is tracked on each student
-          profile; repeat per semester until they advance.
-        </p>
+      <div className="faculty-class-term-card">
+        <div className="faculty-class-term-grid">
+          <label className="faculty-field">
+            <span className="faculty-field-label">School year</span>
+            <input
+              value={schoolYear}
+              onChange={(e) => setSchoolYear(e.target.value)}
+              className="faculty-field-input"
+              placeholder="e.g. 2025-2026"
+            />
+          </label>
+          <label className="faculty-field">
+            <span className="faculty-field-label">Semester</span>
+            <select
+              value={semester}
+              onChange={(e) => setSemester(Number(e.target.value))}
+              className="faculty-field-input faculty-field-select"
+            >
+              <option value={1}>1st semester</option>
+              <option value={2}>2nd semester</option>
+            </select>
+          </label>
+          <div className="faculty-class-term-note-block">
+            <span className="faculty-field-label">How grading works</span>
+            <p className="faculty-class-term-note muted">
+              Semester grade is the average of prelim, midterm, and finals period scores. Year level is updated on each student
+              profile; repeat this flow every semester until they advance.
+            </p>
+          </div>
+        </div>
       </div>
 
       {msg ? (
@@ -304,75 +318,84 @@ export default function FacultyClassSection() {
             <strong>Activity</strong> counts toward the 20% activity bucket; <strong>Quiz</strong> and <strong>Exam</strong> toward their
             buckets when graded (otherwise use manual inputs on the Grades tab).
           </p>
-          <form className="faculty-class-new-act form" onSubmit={postActivity}>
-            <div className="faculty-class-form-row">
-              <label>
-                Title
-                <input
-                  value={newAct.title}
-                  onChange={(e) => setNewAct((p) => ({ ...p, title: e.target.value }))}
-                  required
-                  placeholder="e.g. Midterm practical"
-                />
-              </label>
-              <label>
-                Max score
-                <input
-                  type="number"
-                  min={1}
-                  value={newAct.maxScore}
-                  onChange={(e) => setNewAct((p) => ({ ...p, maxScore: e.target.value }))}
-                />
-              </label>
-            </div>
-            <div className="faculty-class-form-row">
-              <label>
-                Grading period
-                <select
-                  value={newAct.gradingPeriod}
-                  onChange={(e) => setNewAct((p) => ({ ...p, gradingPeriod: e.target.value }))}
-                >
-                  {PERIOD_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Kind
-                <select
-                  value={newAct.assessmentKind}
-                  onChange={(e) => setNewAct((p) => ({ ...p, assessmentKind: e.target.value }))}
-                >
-                  {KIND_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-            <label>
-              Instructions
-              <textarea
-                rows={3}
-                value={newAct.description}
-                onChange={(e) => setNewAct((p) => ({ ...p, description: e.target.value }))}
-              />
-            </label>
-            <label>
-              Deadline (optional)
-              <input
-                type="datetime-local"
-                value={newAct.deadline}
-                onChange={(e) => setNewAct((p) => ({ ...p, deadline: e.target.value }))}
-              />
-            </label>
-            <button type="submit" className="btn btn-primary" disabled={busy === 'newAct'}>
-              {busy === 'newAct' ? 'Posting…' : 'Post'}
-            </button>
-          </form>
+          <div className="faculty-class-form-shell">
+            <form className="faculty-class-form" onSubmit={postActivity}>
+              <div className="faculty-class-form-grid">
+                <label className="faculty-field faculty-field--span-8">
+                  <span className="faculty-field-label">Title</span>
+                  <input
+                    className="faculty-field-input"
+                    value={newAct.title}
+                    onChange={(e) => setNewAct((p) => ({ ...p, title: e.target.value }))}
+                    required
+                    placeholder="e.g. Midterm practical"
+                  />
+                </label>
+                <label className="faculty-field faculty-field--span-4">
+                  <span className="faculty-field-label">Max score</span>
+                  <input
+                    className="faculty-field-input"
+                    type="number"
+                    min={1}
+                    value={newAct.maxScore}
+                    onChange={(e) => setNewAct((p) => ({ ...p, maxScore: e.target.value }))}
+                  />
+                </label>
+                <label className="faculty-field faculty-field--span-4">
+                  <span className="faculty-field-label">Grading period</span>
+                  <select
+                    className="faculty-field-input faculty-field-select"
+                    value={newAct.gradingPeriod}
+                    onChange={(e) => setNewAct((p) => ({ ...p, gradingPeriod: e.target.value }))}
+                  >
+                    {PERIOD_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="faculty-field faculty-field--span-4">
+                  <span className="faculty-field-label">Kind</span>
+                  <select
+                    className="faculty-field-input faculty-field-select"
+                    value={newAct.assessmentKind}
+                    onChange={(e) => setNewAct((p) => ({ ...p, assessmentKind: e.target.value }))}
+                  >
+                    {KIND_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="faculty-field faculty-field--span-12">
+                  <span className="faculty-field-label">Instructions</span>
+                  <textarea
+                    className="faculty-field-textarea"
+                    rows={4}
+                    value={newAct.description}
+                    onChange={(e) => setNewAct((p) => ({ ...p, description: e.target.value }))}
+                    placeholder="What should students submit or prepare?"
+                  />
+                </label>
+                <label className="faculty-field faculty-field--span-6">
+                  <span className="faculty-field-label">Deadline (optional)</span>
+                  <input
+                    className="faculty-field-input"
+                    type="datetime-local"
+                    value={newAct.deadline}
+                    onChange={(e) => setNewAct((p) => ({ ...p, deadline: e.target.value }))}
+                  />
+                </label>
+              </div>
+              <div className="faculty-class-form-footer">
+                <button type="submit" className="btn btn-primary faculty-class-form-submit" disabled={busy === 'newAct'}>
+                  {busy === 'newAct' ? 'Posting…' : 'Post to class'}
+                </button>
+              </div>
+            </form>
+          </div>
 
           <h3 className="faculty-class-subtitle">Posted items & submission status</h3>
           {!activities.length ? (
@@ -468,32 +491,51 @@ function StudentGradeCard({ row, busy, onSavePeriod }) {
 
   return (
     <div className="faculty-grade-card">
-      <h3 className="faculty-grade-card-name">{row.studentName}</h3>
-      <p className="faculty-grade-card-sem">
-        Semester average:{' '}
-        <strong>{row.semesterAverage != null ? row.semesterAverage : '—'}</strong>
-      </p>
-      <div className="faculty-grade-periods">
-        {PERIODS.map(({ id, label }) => {
-          const p = row.periods[id] || {}
-          const d = draft[id] || { attendancePct: 0, quizPct: 0, examPct: 0 }
-          const saving = busy === `${row.studentID}-${id}`
-          return (
-            <div key={id} className="faculty-grade-period">
-              <h4>{label}</h4>
-              <dl className="faculty-grade-dl">
-                <div>
-                  <dt>Activities (20%)</dt>
-                  <dd>{p.activityPct != null ? p.activityPct : '—'}%</dd>
-                </div>
-                <div>
-                  <dt>Attendance (10%)</dt>
-                  <dd>
+      <div className="faculty-grade-card-head">
+        <h3 className="faculty-grade-card-name">{row.studentName}</h3>
+        <div className="faculty-grade-avg-pill" aria-label="Semester average">
+          <span className="faculty-grade-avg-pill-label">Semester avg</span>
+          <span className="faculty-grade-avg-pill-value">{row.semesterAverage != null ? row.semesterAverage : '—'}</span>
+        </div>
+      </div>
+
+      <div className="faculty-grade-matrix-scroll">
+        <table className="faculty-grade-matrix">
+          <thead>
+            <tr>
+              <th scope="col" className="faculty-grade-matrix-corner">
+                Component
+              </th>
+              {PERIODS.map(({ id, label }) => (
+                <th key={id} scope="col" className="faculty-grade-matrix-period">
+                  {label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">Activities (20%)</th>
+              {PERIODS.map(({ id }) => {
+                const p = row.periods[id] || {}
+                return (
+                  <td key={id}>
+                    <span className="faculty-grade-cell-read">{p.activityPct != null ? `${p.activityPct}%` : '—'}</span>
+                  </td>
+                )
+              })}
+            </tr>
+            <tr>
+              <th scope="row">Attendance (10%)</th>
+              {PERIODS.map(({ id }) => {
+                const d = draft[id] || { attendancePct: 0, quizPct: 0, examPct: 0 }
+                return (
+                  <td key={id}>
                     <input
                       type="number"
                       min={0}
                       max={100}
-                      className="faculty-grade-input"
+                      className="faculty-grade-field"
                       value={d.attendancePct}
                       onChange={(e) =>
                         setDraft((prev) => ({
@@ -502,22 +544,28 @@ function StudentGradeCard({ row, busy, onSavePeriod }) {
                         }))
                       }
                     />
-                  </dd>
-                </div>
-                <div>
-                  <dt>
-                    Quiz (20%)
-                    {p.quizFromPostedActivities ? <span className="faculty-grade-auto"> from posted</span> : null}
-                  </dt>
-                  <dd>
+                  </td>
+                )
+              })}
+            </tr>
+            <tr>
+              <th scope="row">
+                Quiz (20%)
+                <span className="faculty-grade-row-hint">Posted quizzes override manual</span>
+              </th>
+              {PERIODS.map(({ id }) => {
+                const p = row.periods[id] || {}
+                const d = draft[id] || { attendancePct: 0, quizPct: 0, examPct: 0 }
+                return (
+                  <td key={id}>
                     {p.quizFromPostedActivities ? (
-                      <span className="faculty-grade-readonly">{p.quizPct ?? '—'}%</span>
+                      <span className="faculty-grade-cell-read">{p.quizPct ?? '—'}%</span>
                     ) : (
                       <input
                         type="number"
                         min={0}
                         max={100}
-                        className="faculty-grade-input"
+                        className="faculty-grade-field"
                         value={d.quizPct}
                         onChange={(e) =>
                           setDraft((prev) => ({
@@ -527,22 +575,28 @@ function StudentGradeCard({ row, busy, onSavePeriod }) {
                         }
                       />
                     )}
-                  </dd>
-                </div>
-                <div>
-                  <dt>
-                    Exam (50%)
-                    {p.examFromPostedActivities ? <span className="faculty-grade-auto"> from posted</span> : null}
-                  </dt>
-                  <dd>
+                  </td>
+                )
+              })}
+            </tr>
+            <tr>
+              <th scope="row">
+                Exam (50%)
+                <span className="faculty-grade-row-hint">Posted exams override manual</span>
+              </th>
+              {PERIODS.map(({ id }) => {
+                const p = row.periods[id] || {}
+                const d = draft[id] || { attendancePct: 0, quizPct: 0, examPct: 0 }
+                return (
+                  <td key={id}>
                     {p.examFromPostedActivities ? (
-                      <span className="faculty-grade-readonly">{p.examPct ?? '—'}%</span>
+                      <span className="faculty-grade-cell-read">{p.examPct ?? '—'}%</span>
                     ) : (
                       <input
                         type="number"
                         min={0}
                         max={100}
-                        className="faculty-grade-input"
+                        className="faculty-grade-field"
                         value={d.examPct}
                         onChange={(e) =>
                           setDraft((prev) => ({
@@ -552,32 +606,48 @@ function StudentGradeCard({ row, busy, onSavePeriod }) {
                         }
                       />
                     )}
-                  </dd>
-                </div>
-                <div>
-                  <dt>Period total</dt>
-                  <dd>
-                    <strong>{p.periodTotal != null ? p.periodTotal : '—'}</strong>
-                  </dd>
-                </div>
-              </dl>
-              <button
-                type="button"
-                className="btn btn-outline btn-sm"
-                disabled={saving}
-                onClick={() =>
-                  onSavePeriod(row.studentID, id, {
-                    attendancePct: d.attendancePct,
-                    quizPct: d.quizPct,
-                    examPct: d.examPct,
-                  })
-                }
-              >
-                {saving ? 'Saving…' : `Save ${label}`}
-              </button>
-            </div>
-          )
-        })}
+                  </td>
+                )
+              })}
+            </tr>
+            <tr className="faculty-grade-matrix-totals">
+              <th scope="row">Period total</th>
+              {PERIODS.map(({ id }) => {
+                const p = row.periods[id] || {}
+                return (
+                  <td key={id}>
+                    <span className="faculty-grade-total">{p.periodTotal != null ? p.periodTotal : '—'}</span>
+                  </td>
+                )
+              })}
+            </tr>
+            <tr className="faculty-grade-matrix-actions">
+              <th scope="row">Save changes</th>
+              {PERIODS.map(({ id, label }) => {
+                const d = draft[id] || { attendancePct: 0, quizPct: 0, examPct: 0 }
+                const saving = busy === `${row.studentID}-${id}`
+                return (
+                  <td key={id}>
+                    <button
+                      type="button"
+                      className="btn btn-outline faculty-grade-save-btn"
+                      disabled={saving}
+                      onClick={() =>
+                        onSavePeriod(row.studentID, id, {
+                          attendancePct: d.attendancePct,
+                          quizPct: d.quizPct,
+                          examPct: d.examPct,
+                        })
+                      }
+                    >
+                      {saving ? 'Saving…' : `Save ${label}`}
+                    </button>
+                  </td>
+                )
+              })}
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
   )
