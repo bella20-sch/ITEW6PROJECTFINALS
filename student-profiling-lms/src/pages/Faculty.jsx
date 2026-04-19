@@ -9,6 +9,7 @@ import Modal from '../components/Modal'
 import ReqStar from '../components/ReqStar'
 import FilterDropdown from '../components/FilterDropdown'
 import ConfirmModal from '../components/ConfirmModal'
+import FacultyMyProfile from './FacultyMyProfile'
 
 export default function Faculty() {
   const { id: routeFacultyId } = useParams()
@@ -19,23 +20,7 @@ export default function Faculty() {
   const isAdmin = currentUser?.role === 'Admin'
   const isFacultyUser = currentUser?.role === 'Faculty'
   const photoRef = useRef(null)
-
   const myFacultyId = Number(currentUser?.id)
-  if (isFacultyUser) {
-    if (!Number.isFinite(myFacultyId)) {
-      return (
-        <div className="page">
-          <p className="muted">Your account is missing a faculty ID. Please contact MIS.</p>
-        </div>
-      )
-    }
-    if (routeFacultyId == null || routeFacultyId === '') {
-      return <Navigate to={lmsPath(base, `/faculty/${myFacultyId}`)} replace />
-    }
-    if (Number(routeFacultyId) !== myFacultyId) {
-      return <Navigate to={lmsPath(base, `/faculty/${myFacultyId}`)} replace />
-    }
-  }
 
   const [modal, setModal] = useState({ open: false, mode: 'add', item: null })
   const [statusFilter, setStatusFilter] = useState('')
@@ -138,6 +123,23 @@ export default function Faculty() {
       return sortOrder === 'az' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA)
     })
 
+  if (isFacultyUser) {
+    if (!Number.isFinite(myFacultyId)) {
+      return (
+        <div className="page">
+          <p className="muted">Your account is missing a faculty ID. Please contact MIS.</p>
+        </div>
+      )
+    }
+    if (routeFacultyId == null || routeFacultyId === '') {
+      return <Navigate to={lmsPath(base, `/faculty/${myFacultyId}`)} replace />
+    }
+    if (Number(routeFacultyId) !== myFacultyId) {
+      return <Navigate to={lmsPath(base, `/faculty/${myFacultyId}`)} replace />
+    }
+    return <FacultyMyProfile />
+  }
+
   return (
     <div className="page">
       <header className="faculty-hero" aria-labelledby="faculty-hero-title">
@@ -149,20 +151,16 @@ export default function Faculty() {
               <span className="faculty-hero-badge-icon">
                 <UserCircle size={18} strokeWidth={2.25} aria-hidden />
               </span>
-              <span className="faculty-hero-badge-text">
-                {isFacultyUser ? 'CCS · Your profile' : 'CCS · Faculty directory'}
-              </span>
+              <span className="faculty-hero-badge-text">CCS · Faculty directory</span>
             </div>
             <h2 id="faculty-hero-title" className="faculty-hero-title">
-              {isFacultyUser ? 'My faculty profile' : 'Teaching & staff roster'}
+              Teaching & staff roster
             </h2>
             <p className="faculty-hero-sub">
-              {isFacultyUser
-                ? 'This page shows only your directory record. To update course, section, or assigned subjects, contact MIS.'
-                : 'CCS instructors and staff — roles, departments, contacts, and employment status. Admins can add or update records.'}
+              CCS instructors and staff — roles, departments, contacts, and employment status. Admins can add or update records.
             </p>
             <ul className="faculty-hero-tags">
-              <li><Sparkles size={12} strokeWidth={2} aria-hidden /> {faculty.length} {isFacultyUser ? 'record (you)' : 'faculty'}</li>
+              <li><Sparkles size={12} strokeWidth={2} aria-hidden /> {faculty.length} faculty</li>
               <li><Building2 size={12} strokeWidth={2} aria-hidden /> {departments.length} departments</li>
               <li><Briefcase size={12} strokeWidth={2} aria-hidden /> {fullTimeCount} full-time</li>
             </ul>

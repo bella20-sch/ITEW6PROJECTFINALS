@@ -4888,3 +4888,286 @@ a {
 .small {
   font-size: 0.8rem;
 }
+
+/* —— Faculty “My profile” (single-page layout) —— */
+.faculty-my-profile {
+  max-width: 920px;
+  margin: 0 auto;
+}
+
+.faculty-my-profile-hero {
+  margin-bottom: 1.5rem;
+  padding: 1.5rem 1.35rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  background: linear-gradient(135deg, var(--color-bg-card) 0%, rgba(249, 115, 22, 0.06) 100%);
+  box-shadow: var(--shadow-sm);
+}
+
+.faculty-my-profile-hero-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1.25rem 1.5rem;
+}
+
+.faculty-my-profile-avatar-wrap {
+  flex-shrink: 0;
+}
+
+.faculty-my-profile-avatar {
+  width: 112px;
+  height: 112px;
+  border-radius: var(--radius-full);
+  object-fit: cover;
+  border: 3px solid rgba(249, 115, 22, 0.35);
+  box-shadow: var(--shadow-md);
+}
+
+.faculty-my-profile-avatar--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--color-accent), var(--color-accent-dark));
+  color: #fff;
+}
+
+.faculty-my-profile-hero-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.faculty-my-profile-kicker {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+  margin: 0 0 0.35rem;
+}
+
+.faculty-my-profile-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: clamp(1.35rem, 3vw, 1.75rem);
+  font-weight: 700;
+  margin: 0 0 0.25rem;
+  line-height: 1.2;
+}
+
+.faculty-my-profile-role {
+  margin: 0 0 0.75rem;
+  font-size: 1.05rem;
+  color: var(--color-text-secondary);
+}
+
+.faculty-my-profile-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.faculty-my-profile-chips li {
+  font-size: 0.8rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: var(--radius-full);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+.faculty-my-profile-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 720px) {
+  .faculty-my-profile-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .faculty-my-profile-card--wide {
+    grid-column: 1 / -1;
+  }
+}
+
+.faculty-my-profile-card {
+  padding: 1.15rem 1.25rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+  box-shadow: var(--shadow-sm);
+}
+
+.faculty-my-profile-card-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 0.75rem;
+  font-family: 'Outfit', sans-serif;
+}
+
+.faculty-my-profile-card-title svg {
+  color: var(--color-accent-dark);
+  flex-shrink: 0;
+}
+
+.faculty-my-profile-prose {
+  margin: 0 0 1rem;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: var(--color-text-secondary);
+}
+
+.faculty-my-profile-muted {
+  margin: 0 0 0.75rem;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+
+.faculty-my-profile-subheading {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.92rem;
+  font-weight: 600;
+  margin: 1.15rem 0 0.6rem;
+}
+
+.faculty-my-profile-dl {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.faculty-my-profile-dl > div {
+  margin: 0;
+}
+
+.faculty-my-profile-dl dt {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  margin-bottom: 0.2rem;
+}
+
+.faculty-my-profile-dl dd {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--color-text-primary);
+}
+
+.faculty-my-profile-code {
+  font-size: 0.9rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+}
+
+.faculty-my-profile-mask {
+  font-family: ui-monospace, monospace;
+  letter-spacing: 0.12em;
+  color: var(--color-text-muted);
+}
+
+.faculty-my-profile-highlight {
+  padding: 0.85rem 1rem;
+  margin-bottom: 0.5rem;
+  border-radius: var(--radius-md);
+  background: rgba(249, 115, 22, 0.08);
+  border: 1px solid rgba(249, 115, 22, 0.22);
+}
+
+.faculty-my-profile-highlight-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-accent-dark);
+}
+
+.faculty-my-profile-highlight-body {
+  margin: 0.35rem 0 0;
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.faculty-my-profile-loads {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.faculty-my-profile-load {
+  padding: 0.75rem 0.85rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-primary);
+}
+
+.faculty-my-profile-load-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.faculty-my-profile-load-code {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-accent-dark);
+}
+
+.faculty-my-profile-load-section {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.faculty-my-profile-load-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.faculty-my-profile-load-meta {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  margin-top: 0.2rem;
+}
+
+.faculty-my-profile-callout {
+  margin-top: 1rem;
+  padding: 0.85rem 1rem;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  border-radius: var(--radius-md);
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.22);
+  color: var(--color-text-secondary);
+}
+
+[data-theme="dark"] .faculty-my-profile-hero {
+  background: linear-gradient(135deg, var(--color-bg-card) 0%, rgba(249, 115, 22, 0.1) 100%);
+}
+
+[data-theme="dark"] .faculty-my-profile-callout {
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(96, 165, 250, 0.28);
+}
