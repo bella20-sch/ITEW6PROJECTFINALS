@@ -42,15 +42,15 @@ If you prefer to run the components manually, follow these instructions:
 
 After login, **MIS administrators** land on **[http://localhost:3000/mis](http://localhost:3000/mis)** (MIS console: dashboard, account provisioning, directory). **Faculty** and **students** land on the main LMS at `/`.
 
-### MIS / Administrator
+### ACC FOR MIS / Administrator
 - **Email**: `mis.admin@school.edu`
 - **Password**: `admin123`
 
-### Faculty (sample account in `database.json`)
+### ACC FOR Faculty (sample account in `database.json`)
 - **Email**: `ana.reyes@school.edu`
 - **Password**: `faculty123`
 
-### Student (sample account in `database.json`)
+### ACC FOR Student (sample account in `database.json`)
 - **Email**: `maria.santos@school.edu`
 - **Password**: `student123`
 
