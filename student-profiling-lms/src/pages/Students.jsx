@@ -23,10 +23,29 @@ export default function Students() {
 
   const [search, setSearch] = useState('')
   const [courseFilter, setCourseFilter] = useState('')
+  /** Faculty only: `courseID|section` from roster (matches server section enrollment). */
+  const [classFilter, setClassFilter] = useState('')
   const [yearFilter, setYearFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [typeFilter, setTypeFilter] = useState('')
   const [sortOrder, setSortOrder] = useState('az') // az | za
+
+  const facultyClassOptions = useMemo(() => {
+    if (!isFaculty) return []
+    const seen = new Map()
+    for (const s of students) {
+      const cid = Number(s.courseID)
+      const sec = String(s.section || '').trim()
+      const key = `${cid}|${sec}`
+      if (seen.has(key)) continue
+      const c = courses.find((co) => Number(co.courseID) === cid)
+      seen.set(key, {
+        value: key,
+        label: `${c?.courseCode || '—'} · Sec. ${sec || '—'}`,
+      })
+    }
+    return Array.from(seen.values()).sort((a, b) => a.label.localeCompare(b.label))
+  }, [isFaculty, students, courses])
 
   const filtered = useMemo(() => {
     let list = [...students]
@@ -40,6 +59,18 @@ export default function Students() {
         s.email?.toLowerCase().includes(q) ||
         s.section?.toLowerCase().includes(q)
       )
+    }
+
+    // Faculty: filter by program section (class)
+    if (isFaculty && classFilter) {
+      const pipe = classFilter.indexOf('|')
+      if (pipe !== -1) {
+        const cid = classFilter.slice(0, pipe)
+        const sec = classFilter.slice(pipe + 1)
+        list = list.filter(
+          (s) => String(s.courseID) === cid && String(s.section || '').trim() === sec,
+        )
+      }
     }
 
     // Course filter
@@ -64,7 +95,7 @@ export default function Students() {
     })
 
     return list
-  }, [students, search, courseFilter, yearFilter, statusFilter, typeFilter, sortOrder])
+  }, [students, search, isFaculty, classFilter, courseFilter, yearFilter, statusFilter, typeFilter, sortOrder])
 
   const enrolledCount = students.filter((s) => s.enrollmentStatus === 'Enrolled').length
 
@@ -87,7 +118,7 @@ export default function Students() {
             </h2>
             <p className="students-hero-sub">
               {isFaculty
-                ? 'Only students in sections you teach or advise appear here. Use search and filters to find someone in your roster.'
+                ? 'Only students in sections you teach or advise appear here. Filter by class (program · section), search, or other filters to find someone in your roster.'
                 : 'Search and filter the CCS student body by course, year level, enrollment, and type. Administrators can register new students from here.'}
             </p>
             <ul className="students-hero-tags">
@@ -130,6 +161,18 @@ export default function Students() {
           </div>
         </div>
         <div className="students-filter-row">
+          {isFaculty && (
+            <FilterDropdown
+              ariaLabel="Filter by class"
+              value={classFilter}
+              onChange={setClassFilter}
+              placeholder="All classes"
+              options={[
+                { value: '', label: 'All classes' },
+                ...facultyClassOptions,
+              ]}
+            />
+          )}
           <FilterDropdown
             ariaLabel="Filter by course"
             value={courseFilter}

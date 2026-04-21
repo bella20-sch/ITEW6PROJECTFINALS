@@ -12,6 +12,7 @@ import {
   ExternalLink,
   ChevronRight,
 } from 'lucide-react'
+import ConfirmModal from '../components/ConfirmModal'
 
 const ALLOWED_TABS = new Set(['students', 'lessons', 'activities', 'grades'])
 
@@ -41,6 +42,7 @@ export default function FacultyClassSection() {
   const [loading, setLoading] = useState(true)
   const [msg, setMsg] = useState('')
   const [busy, setBusy] = useState('') // posting activity only
+  const [confirmPostActivity, setConfirmPostActivity] = useState(false)
 
   const [newAct, setNewAct] = useState({
     title: '',
@@ -97,9 +99,14 @@ export default function FacultyClassSection() {
 
   const tl = classroom?.teachingLoad
 
-  const postActivity = async (e) => {
+  const handleActivityFormSubmit = (e) => {
     e.preventDefault()
     if (!newAct.title.trim()) return
+    setConfirmPostActivity(true)
+  }
+
+  const executePostActivity = async () => {
+    setConfirmPostActivity(false)
     setBusy('newAct')
     setMsg('')
     try {
@@ -192,45 +199,13 @@ export default function FacultyClassSection() {
         </div>
       </div>
 
-      <div className="faculty-class-term-card">
-        <div className="faculty-class-term-grid">
-          <label className="faculty-field">
-            <span className="faculty-field-label">School year</span>
-            <input
-              value={schoolYear}
-              onChange={(e) => setSchoolYear(e.target.value)}
-              className="faculty-field-input"
-              placeholder="e.g. 2025-2026"
-            />
-          </label>
-          <label className="faculty-field">
-            <span className="faculty-field-label">Semester</span>
-            <select
-              value={semester}
-              onChange={(e) => setSemester(Number(e.target.value))}
-              className="faculty-field-input faculty-field-select"
-            >
-              <option value={1}>1st semester</option>
-              <option value={2}>2nd semester</option>
-            </select>
-          </label>
-          <div className="faculty-class-term-note-block">
-            <span className="faculty-field-label">How grading works</span>
-            <p className="faculty-class-term-note muted">
-              Semester grade is the average of prelim, midterm, and finals period scores. Year level is updated on each student
-              profile; repeat this flow every semester until they advance.
-            </p>
-          </div>
-        </div>
-      </div>
-
       {msg ? (
         <div className="workspace-banner" role="status">
           {msg}
         </div>
       ) : null}
 
-      <div className="faculty-class-tabs" role="tablist" aria-label="Class views">
+      <nav className="faculty-class-tabs workspace-tabs" role="tablist" aria-label="Class views">
         {[
           { id: 'students', label: 'Students', Icon: Users },
           { id: 'lessons', label: 'Lessons', Icon: FileText },
@@ -245,11 +220,11 @@ export default function FacultyClassSection() {
             className={`faculty-class-tab ${tab === id ? 'is-active' : ''}`}
             onClick={() => selectTab(id)}
           >
-            <Icon size={18} aria-hidden />
+            <Icon size={18} strokeWidth={2} aria-hidden />
             {label}
           </button>
         ))}
-      </div>
+      </nav>
 
       {tab === 'students' && (
         <section className="faculty-class-panel" aria-labelledby="tab-students">
@@ -312,7 +287,7 @@ export default function FacultyClassSection() {
             buckets when graded (otherwise use manual inputs on the Grades tab).
           </p>
           <div className="faculty-class-form-shell">
-            <form className="faculty-class-form" onSubmit={postActivity}>
+            <form className="faculty-class-form" onSubmit={handleActivityFormSubmit}>
               <div className="faculty-class-form-grid">
                 <label className="faculty-field faculty-field--span-8">
                   <span className="faculty-field-label">Title</span>
@@ -478,6 +453,15 @@ export default function FacultyClassSection() {
           )}
         </section>
       )}
+
+      <ConfirmModal
+        open={confirmPostActivity}
+        title="Post activity to this class?"
+        message="Students enrolled in this section will see this activity and can submit work. Continue?"
+        confirmLabel="Post to class"
+        onCancel={() => setConfirmPostActivity(false)}
+        onConfirm={executePostActivity}
+      />
     </div>
   )
 }

@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
+  ArrowLeft,
   UserCircle,
   Mail,
   Phone,
@@ -16,6 +18,7 @@ import {
 } from 'lucide-react'
 import { useData } from '../context/DataContext'
 import { useAuth } from '../context/AuthContext'
+import { useLmsBase, lmsPath } from '../lib/lmsPaths'
 import { apiFetch } from '../lib/api'
 import ContentLoadingSkeleton from '../components/ContentLoadingSkeleton'
 import DirectoryLoadErrorPanel from '../components/DirectoryLoadErrorPanel'
@@ -31,6 +34,7 @@ function formatDate(iso) {
 export default function FacultyMyProfile() {
   const { courses, departments, crud, directoryStatus, reloadDirectory } = useData()
   const { token } = useAuth()
+  const base = useLmsBase()
   const me = crud.faculty.getAll()[0] || null
   const [assignments, setAssignments] = useState([])
   const [assignmentsLoading, setAssignmentsLoading] = useState(true)
@@ -98,6 +102,12 @@ export default function FacultyMyProfile() {
 
   return (
     <div className="page faculty-my-profile">
+      <div className="profile-toolbar">
+        <Link to={lmsPath(base, '/')} className="back-link">
+          <ArrowLeft size={18} strokeWidth={2} aria-hidden />
+          Back to dashboard
+        </Link>
+      </div>
       <section className="faculty-my-profile-hero" aria-labelledby="faculty-my-profile-title">
         <div className="faculty-my-profile-hero-inner">
           <div className="faculty-my-profile-avatar-wrap">

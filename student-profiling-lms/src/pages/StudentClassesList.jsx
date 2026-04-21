@@ -8,15 +8,12 @@ import { GraduationCap, Layers, ChevronRight, BookOpen, Sparkles } from 'lucide-
 import ContentLoadingSkeleton from '../components/ContentLoadingSkeleton'
 import DirectoryLoadErrorPanel from '../components/DirectoryLoadErrorPanel'
 
-const PROGRAM_CODES = ['BSIT', 'BSCS', 'BSIS']
-
-export default function FacultyMyClasses() {
+export default function StudentClassesList() {
   const { currentUser, token } = useAuth()
   const { courses, directoryStatus, reloadDirectory } = useData()
   const base = useLmsBase()
   const [assignments, setAssignments] = useState([])
   const [loading, setLoading] = useState(true)
-  const [programFilter, setProgramFilter] = useState('')
 
   const load = useCallback(async () => {
     if (!token) return
@@ -47,22 +44,11 @@ export default function FacultyMyClasses() {
     })
   }, [assignments, courses])
 
-  const filtered = useMemo(() => {
-    if (!programFilter) return enriched
-    return enriched.filter((x) => String(x.programCode) === programFilter)
-  }, [enriched, programFilter])
-
   const heroStats = useMemo(() => {
-    const classCount = enriched.length
-    const programCount = new Set(enriched.map((x) => x.programCode).filter(Boolean)).size
-    const rosterTotal = enriched.reduce(
-      (sum, tl) => sum + (Array.isArray(tl.students) ? tl.students.length : 0),
-      0,
-    )
-    return { classCount, programCount, rosterTotal }
+    return { classCount: enriched.length }
   }, [enriched])
 
-  if (currentUser?.role !== 'Faculty') {
+  if (currentUser?.role !== 'Student') {
     return <Navigate to={lmsPath(base, '/')} replace />
   }
 
@@ -79,7 +65,7 @@ export default function FacultyMyClasses() {
 
   return (
     <div className="page faculty-my-classes">
-      <header className="students-hero" aria-labelledby="faculty-my-classes-hero-title">
+      <header className="students-hero" aria-labelledby="student-classes-hero-title">
         <div className="students-hero-glow" aria-hidden="true" />
         <div className="students-hero-grid" aria-hidden="true" />
         <div className="students-hero-inner">
@@ -88,26 +74,18 @@ export default function FacultyMyClasses() {
               <span className="students-hero-badge-icon">
                 <Layers size={18} strokeWidth={2.25} aria-hidden />
               </span>
-              <span className="students-hero-badge-text">CCS · Teaching</span>
+              <span className="students-hero-badge-text">CCS · This semester</span>
             </div>
-            <h2 id="faculty-my-classes-hero-title" className="students-hero-title">
-              My classes
+            <h2 id="student-classes-hero-title" className="students-hero-title">
+              Classes
             </h2>
             <p className="students-hero-sub">
-              Open a section to view students, posted lessons, activities (and submission status), and term grades. Filter by program
-              (BSIT, BSCS, BSIS).
+              These are the subjects you are enrolled in for this term. Open one for activities, grades, and lessons.
             </p>
             <ul className="students-hero-tags">
               <li>
                 <Sparkles size={12} strokeWidth={2} aria-hidden /> {heroStats.classCount}{' '}
                 {heroStats.classCount === 1 ? 'class' : 'classes'}
-              </li>
-              <li>
-                <GraduationCap size={12} strokeWidth={2} aria-hidden /> {heroStats.rosterTotal} students
-              </li>
-              <li>
-                <BookOpen size={12} strokeWidth={2} aria-hidden /> {heroStats.programCount}{' '}
-                {heroStats.programCount === 1 ? 'program' : 'programs'}
               </li>
             </ul>
           </div>
@@ -117,45 +95,22 @@ export default function FacultyMyClasses() {
               <span className="students-hero-orbit-dot students-hero-orbit-dot--a" />
               <span className="students-hero-orbit-dot students-hero-orbit-dot--b" />
               <span className="students-hero-orbit-center">
-                <BookOpen size={28} strokeWidth={1.85} />
+                <GraduationCap size={28} strokeWidth={1.85} />
               </span>
             </div>
           </div>
         </div>
       </header>
 
-      <div className="faculty-my-classes-toolbar">
-        <span className="faculty-my-classes-toolbar-label">Program</span>
-        <div className="faculty-my-classes-filters" role="group" aria-label="Filter by program">
-          <button
-            type="button"
-            className={`faculty-my-classes-chip ${!programFilter ? 'is-active' : ''}`}
-            onClick={() => setProgramFilter('')}
-          >
-            All
-          </button>
-          {PROGRAM_CODES.map((code) => (
-            <button
-              key={code}
-              type="button"
-              className={`faculty-my-classes-chip ${programFilter === code ? 'is-active' : ''}`}
-              onClick={() => setProgramFilter(code)}
-            >
-              {code}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {!filtered.length ? (
+      {!enriched.length ? (
         <div className="empty-state">
-          <p>No classes match this filter. MIS assigns subjects under your teaching loads.</p>
+          <p>No classes are linked to your enrollment yet.</p>
         </div>
       ) : (
         <ul className="faculty-my-classes-list">
-          {filtered.map((tl) => (
+          {enriched.map((tl) => (
             <li key={tl.key}>
-              <Link to={lmsPath(base, `/my-classes/${tl.key}`)} className="faculty-my-classes-card">
+              <Link to={lmsPath(base, `/classes/${tl.key}`)} className="faculty-my-classes-card">
                 <div className="faculty-my-classes-card-main">
                   <span className="faculty-my-classes-badge">{tl.programCode}</span>
                   <span className="faculty-my-classes-section-pill">Sec. {tl.section}</span>
@@ -164,10 +119,7 @@ export default function FacultyMyClasses() {
                     <BookOpen size={14} aria-hidden />
                     {tl.subjectCode} · {tl.programName || tl.displayLabel}
                   </p>
-                  <p className="faculty-my-classes-roster-hint">
-                    <GraduationCap size={14} aria-hidden />
-                    {Array.isArray(tl.students) ? `${tl.students.length} students` : 'Roster on file'}
-                  </p>
+                  <p className="faculty-my-classes-roster-hint muted">Activities · Grades · Lessons</p>
                 </div>
                 <ChevronRight className="faculty-my-classes-chevron" size={22} aria-hidden />
               </Link>
