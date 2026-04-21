@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Users, FileBarChart, BookOpen, UserCircle, LayoutDashboard, BarChart3,
@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { useData } from '../context/DataContext'
 import { useAuth } from '../context/AuthContext'
+import { apiFetch } from '../lib/api'
 import DirectoryFetchBarrier from '../components/DirectoryFetchBarrier'
 import { useLmsBase, lmsPath } from '../lib/lmsPaths'
 
@@ -27,9 +28,39 @@ function MiniBar({ label, value, max, color = '#fb923c' }) {
 
 export default function Dashboard() {
   const { students, courses, faculty, profiles } = useData()
-  const { currentUser } = useAuth()
+  const { currentUser, token } = useAuth()
   const base = useLmsBase()
+  const [insights, setInsights] = useState(null)
+  const [insightsStatus, setInsightsStatus] = useState('idle')
+
+  useEffect(() => {
+    if (!token || currentUser?.role === 'Student') {
+      setInsights(null)
+      setInsightsStatus('idle')
+      return
+    }
+    let cancelled = false
+    setInsightsStatus('loading')
+    ;(async () => {
+      try {
+        const data = await apiFetch('/api/meta/dashboard-insights', { token })
+        if (!cancelled) {
+          setInsights(data)
+          setInsightsStatus('ready')
+        }
+      } catch {
+        if (!cancelled) {
+          setInsights(null)
+          setInsightsStatus('error')
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [token, currentUser?.role])
   const isFaculty = currentUser?.role === 'Faculty'
+  const isStudent = currentUser?.role === 'Student'
   const myFacultyId = currentUser?.id
   const facultyHubPath =
     isFaculty && myFacultyId != null && myFacultyId !== ''
@@ -60,22 +91,48 @@ export default function Dashboard() {
 
     const recent = [...students].sort((a, b) => b.studentID - a.studentID).slice(0, 5)
 
-    // Profile-derived stats
+    // Profile-derived stats (fallback when dashboard insights are not loaded — e.g. opened student pages)
     const profileList = Object.values(profiles)
-    const hasProfiles = profileList.length > 0
 
-    // Top skills
-    const skillCounts = {}
-    profileList.forEach(p => {
-      (p.skills || []).forEach(sk => {
-        const name = sk.skillName || sk.name || 'Unknown'
-        skillCounts[name] = (skillCounts[name] || 0) + 1
+    // Top skills + violations: prefer server aggregates (MIS / faculty); else cached profiles from opened students
+    let topSkills = []
+    let allViolations = []
+    let pendingViolations = 0
+    let resolvedViolations = 0
+    let recentViolations = []
+    let totalViolations = 0
+
+    if (insights) {
+      topSkills = insights.topSkills || []
+      pendingViolations = insights.pendingViolations ?? 0
+      resolvedViolations = insights.resolvedViolations ?? 0
+      recentViolations = insights.recentViolations || []
+      totalViolations = insights.totalViolations ?? 0
+    } else {
+      const skillCounts = {}
+      profileList.forEach(p => {
+        (p.skills || []).forEach(sk => {
+          const name = sk.skillName || sk.name || 'Unknown'
+          skillCounts[name] = (skillCounts[name] || 0) + 1
+        })
       })
-    })
-    const topSkills = Object.entries(skillCounts)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([name, count]) => ({ name, count }))
+      topSkills = Object.entries(skillCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([name, count]) => ({ name, count }))
+
+      profileList.forEach(p => {
+        (p.violations || []).forEach(v => {
+          allViolations.push({ ...v, studentID: p.studentID, studentName: `${p.lastName}, ${p.firstName}` })
+        })
+      })
+      pendingViolations = allViolations.filter(v => v.status === 'Pending').length
+      resolvedViolations = allViolations.filter(v => v.status === 'Resolved').length
+      recentViolations = [...allViolations]
+        .sort((a, b) => new Date(b.violationDate || b.created_at || 0) - new Date(a.violationDate || a.created_at || 0))
+        .slice(0, 3)
+      totalViolations = allViolations.length
+    }
 
     // Student type breakdown
     const regular    = students.filter(x => x.studentType === 'Regular').length
@@ -83,23 +140,10 @@ export default function Dashboard() {
     const transferee = students.filter(x => x.studentType === 'Transferee').length
     const maxType    = Math.max(regular, irregular, transferee, 1)
 
-    // Violations
-    const allViolations = []
-    profileList.forEach(p => {
-      (p.violations || []).forEach(v => {
-        allViolations.push({ ...v, studentID: p.studentID, studentName: `${p.lastName}, ${p.firstName}` })
-      })
-    })
-    const pendingViolations  = allViolations.filter(v => v.status === 'Pending').length
-    const resolvedViolations = allViolations.filter(v => v.status === 'Resolved').length
-    const recentViolations   = [...allViolations]
-      .sort((a, b) => new Date(b.violationDate || b.created_at || 0) - new Date(a.violationDate || a.created_at || 0))
-      .slice(0, 3)
-
     return { enrolled, dropped, graduated, male, female, byCourse, byYear, byStatus, recent,
-             hasProfiles, topSkills, regular, irregular, transferee, maxType,
-             allViolations, pendingViolations, resolvedViolations, recentViolations }
-  }, [students, courses, profiles])
+             topSkills, regular, irregular, transferee, maxType,
+             pendingViolations, resolvedViolations, recentViolations, totalViolations }
+  }, [students, courses, profiles, insights])
 
   const enrolledPct = students.length > 0 ? Math.round((s.enrolled / students.length) * 100) : 0
 
@@ -153,14 +197,15 @@ export default function Dashboard() {
             </span>
           </Link>
           <Link
-            to={lmsPath(base, isFaculty ? '/my-classes' : '/courses')}
+            to={lmsPath(base, isFaculty ? '/my-classes' : isStudent ? '/classes' : '/courses')}
             className="dash-stat-tile dash-stat-tile--link"
           >
             <span className="dash-stat-tile-icon"><BookOpen size={20} strokeWidth={2} /></span>
             <span className="dash-stat-tile-copy">
-              <span className="dash-stat-tile-value">{isFaculty ? '—' : courses.length}</span>
-              <span className="dash-stat-tile-label">{isFaculty ? 'My classes' : 'Courses'}</span>
+              <span className="dash-stat-tile-value">{isFaculty || isStudent ? '—' : courses.length}</span>
+              <span className="dash-stat-tile-label">{isFaculty ? 'My classes' : isStudent ? 'Classes' : 'Courses'}</span>
               {isFaculty ? <span className="dash-stat-tile-hint">Sections you teach</span> : null}
+              {isStudent ? <span className="dash-stat-tile-hint">This semester</span> : null}
             </span>
           </Link>
           <Link to={facultyHubPath} className="dash-stat-tile dash-stat-tile--link">
@@ -261,14 +306,23 @@ export default function Dashboard() {
             <h3>Top Skills</h3>
           </div>
           <div className="dash-chart-body">
-            {!s.hasProfiles
-              ? <p className="muted dash-chart-empty">Load student profiles to see full stats</p>
-              : s.topSkills.length > 0
-                ? s.topSkills.map(sk => (
-                    <MiniBar key={sk.name} label={sk.name} value={sk.count} max={s.topSkills[0].count} color="#8b5cf6" />
-                  ))
-                : <p className="muted dash-chart-empty">No skills recorded</p>
-            }
+            {insightsStatus === 'loading' && currentUser?.role !== 'Student' ? (
+              <p className="muted dash-chart-empty">Loading…</p>
+            ) : insightsStatus === 'error' && currentUser?.role !== 'Student' ? (
+              <p className="muted dash-chart-empty">Could not load skills.</p>
+            ) : s.topSkills.length > 0 ? (
+              s.topSkills.map(sk => (
+                <MiniBar
+                  key={sk.name}
+                  label={sk.name}
+                  value={sk.count}
+                  max={s.topSkills[0]?.count || 1}
+                  color="#8b5cf6"
+                />
+              ))
+            ) : (
+              <p className="muted dash-chart-empty">No skills recorded</p>
+            )}
           </div>
         </div>
 
@@ -290,11 +344,17 @@ export default function Dashboard() {
         <div className="dash-recent-header">
           <AlertTriangle size={16} strokeWidth={2} />
           <h3>Violations Summary</h3>
-          {s.allViolations.length > 0 && <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{s.allViolations.length} total</span>}
+          {s.totalViolations > 0 && (
+            <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+              {s.totalViolations} total
+            </span>
+          )}
         </div>
-        {!s.hasProfiles ? (
-          <p className="muted" style={{ padding: '1rem 1.25rem' }}>Load student profiles to see full stats</p>
-        ) : s.allViolations.length === 0 ? (
+        {insightsStatus === 'loading' && currentUser?.role !== 'Student' ? (
+          <p className="muted" style={{ padding: '1rem 1.25rem' }}>Loading…</p>
+        ) : insightsStatus === 'error' && currentUser?.role !== 'Student' ? (
+          <p className="muted" style={{ padding: '1rem 1.25rem' }}>Could not load violations.</p>
+        ) : s.totalViolations === 0 ? (
           <p className="muted" style={{ padding: '1rem 1.25rem' }}>No violations recorded</p>
         ) : (
           <>
@@ -367,13 +427,15 @@ export default function Dashboard() {
           <h3>Reports & Queries</h3>
           <p>Run queries — basketball tryouts, programming contest, honor roll, and custom filters.</p>
         </Link>
-        <Link to={lmsPath(base, isFaculty ? '/my-classes' : '/courses')} className="action-card">
+        <Link to={lmsPath(base, isFaculty ? '/my-classes' : isStudent ? '/classes' : '/courses')} className="action-card">
           <BookOpen size={28} />
-          <h3>{isFaculty ? 'My classes' : 'Courses'}</h3>
+          <h3>{isFaculty ? 'My classes' : isStudent ? 'Classes' : 'Courses'}</h3>
           <p>
             {isFaculty
               ? 'Open each section to see students, lessons, activities, and term grades (prelim, midterm, finals).'
-              : 'Manage BSIT, BSCS, BSIS and other CCS programs.'}
+              : isStudent
+                ? 'See your subjects for the semester: activities, grades, and lessons.'
+                : 'Manage BSIT, BSCS, BSIS and other CCS programs.'}
           </p>
         </Link>
         <Link to={facultyHubPath} className="action-card">

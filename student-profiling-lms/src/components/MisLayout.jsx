@@ -10,7 +10,7 @@ export default function MisLayout() {
   const adminBleed = pathname.startsWith('/mis/provision')
 
   return (
-    <div className="layout layout--mis">
+    <div className="layout">
       <MisSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} collapsed={sidebarCollapsed} />
       <main className="main-content">
         <Header

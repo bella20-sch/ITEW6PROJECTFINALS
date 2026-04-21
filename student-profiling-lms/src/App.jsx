@@ -20,6 +20,10 @@ import FacultyMyClasses from './pages/FacultyMyClasses'
 import FacultyClassSection from './pages/FacultyClassSection'
 import FacultyClassActivity from './pages/FacultyClassActivity'
 import FacultyClassStudent from './pages/FacultyClassStudent'
+import StudentClassesList from './pages/StudentClassesList'
+import StudentClassSection from './pages/StudentClassSection'
+import StudentActivitiesHub from './pages/StudentActivitiesHub'
+import StudentMaterialsHub from './pages/StudentMaterialsHub'
 
 export default function App() {
   return (
@@ -105,6 +109,10 @@ export default function App() {
         <Route path="faculty" element={<RequireRole roles={['Admin', 'Faculty']}><Faculty /></RequireRole>} />
         <Route path="reports" element={<RequireRole roles={['Admin']}><Reports /></RequireRole>} />
         <Route path="workspace" element={<RequireRole roles={['Faculty', 'Student']}><Workspace /></RequireRole>} />
+        <Route path="classes/:teachingLoadId" element={<RequireRole roles={['Student']}><StudentClassSection /></RequireRole>} />
+        <Route path="classes" element={<RequireRole roles={['Student']}><StudentClassesList /></RequireRole>} />
+        <Route path="activities" element={<RequireRole roles={['Student']}><StudentActivitiesHub /></RequireRole>} />
+        <Route path="materials" element={<RequireRole roles={['Student']}><StudentMaterialsHub /></RequireRole>} />
         <Route
           path="my-classes/:teachingLoadId/activities/:activityId"
           element={

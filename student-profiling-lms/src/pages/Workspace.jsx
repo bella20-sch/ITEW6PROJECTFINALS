@@ -6,7 +6,31 @@ import { apiFetch } from '../lib/api'
 import { useLmsBase, lmsPath } from '../lib/lmsPaths'
 import ContentLoadingSkeleton from '../components/ContentLoadingSkeleton'
 import DirectoryLoadErrorPanel from '../components/DirectoryLoadErrorPanel'
-import { BookOpen, ClipboardList, GraduationCap, Send, Users, FileText } from 'lucide-react'
+import ConfirmModal from '../components/ConfirmModal'
+import {
+  BookOpen,
+  ClipboardList,
+  GraduationCap,
+  Send,
+  Users,
+  FileText,
+  Sparkles,
+  CirclePlus,
+  CheckCircle2,
+} from 'lucide-react'
+
+const FACULTY_TABS = [
+  { id: 'classes', label: 'My classes', Icon: GraduationCap },
+  { id: 'create', label: 'Post & assign', Icon: CirclePlus },
+  { id: 'materials', label: 'Materials', Icon: FileText },
+  { id: 'activities', label: 'Activities & grading', Icon: ClipboardList },
+]
+
+const STUDENT_TABS = [
+  { id: 'classes', label: 'My classes', Icon: GraduationCap },
+  { id: 'materials', label: 'Materials', Icon: FileText },
+  { id: 'activities', label: 'Activities', Icon: ClipboardList },
+]
 
 export default function Workspace() {
   const { token, currentUser } = useAuth()
@@ -37,10 +61,15 @@ export default function Workspace() {
     link: '',
   })
   const [submissionDraft, setSubmissionDraft] = useState({})
+  const [submitConfirmId, setSubmitConfirmId] = useState(null)
+  const [facultyPublishConfirm, setFacultyPublishConfirm] = useState(null) // null | 'activity' | 'material'
   const [gradeDraft, setGradeDraft] = useState({})
+  const [workspaceTab, setWorkspaceTab] = useState('classes')
 
   const isFaculty = currentUser?.role === 'Faculty'
   const isStudent = currentUser?.role === 'Student'
+
+  const workspaceTabs = isFaculty ? FACULTY_TABS : STUDENT_TABS
 
   const courseName = useCallback(
     (courseID) => courses.find((c) => Number(c.courseID) === Number(courseID))?.courseName || 'Program',
@@ -154,17 +183,54 @@ export default function Workspace() {
 
   return (
     <div className="page workspace-page">
-      <header className="workspace-hero">
-        <div className="workspace-hero-icon" aria-hidden>
-          <ClipboardList size={28} strokeWidth={1.75} />
-        </div>
-        <div>
-          <h2 className="workspace-hero-title">{isFaculty ? 'Faculty workspace' : 'Student workspace'}</h2>
-          <p className="workspace-hero-sub">
-            {isFaculty
-              ? 'View your section rosters, post lessons, assign work, and grade submissions for each subject you teach.'
-              : 'See materials and activities for your section. Submit assignments and view scores from your instructors.'}
-          </p>
+      <header className="students-hero" aria-labelledby="workspace-hero-title">
+        <div className="students-hero-glow" aria-hidden="true" />
+        <div className="students-hero-grid" aria-hidden="true" />
+        <div className="students-hero-inner">
+          <div className="students-hero-copy">
+            <div className="students-hero-badge">
+              <span className="students-hero-badge-icon">
+                <ClipboardList size={18} strokeWidth={2.25} aria-hidden />
+              </span>
+              <span className="students-hero-badge-text">
+                {isFaculty ? 'CCS · Teaching workspace' : 'CCS · Learning'}
+              </span>
+            </div>
+            <h2 id="workspace-hero-title" className="students-hero-title">
+              {isFaculty ? 'Faculty workspace' : 'Student workspace'}
+            </h2>
+            <p className="students-hero-sub">
+              {isFaculty
+                ? 'View your section rosters, post lessons, assign work, and grade submissions for each subject you teach.'
+                : 'See materials and activities for your section. Submit assignments and view scores from your instructors.'}
+            </p>
+            <ul className="students-hero-tags">
+              <li>
+                <Sparkles size={12} strokeWidth={2} aria-hidden /> {assignments.length}{' '}
+                {isFaculty ? 'sections' : 'classes'}
+              </li>
+              <li>
+                <ClipboardList size={12} strokeWidth={2} aria-hidden /> {activities.length} activities
+              </li>
+              <li>
+                <FileText size={12} strokeWidth={2} aria-hidden /> {materials.length} materials
+              </li>
+            </ul>
+          </div>
+          <div className="students-hero-visual" aria-hidden="true">
+            <div className="students-hero-orbit">
+              <span className="students-hero-orbit-ring" />
+              <span className="students-hero-orbit-dot students-hero-orbit-dot--a" />
+              <span className="students-hero-orbit-dot students-hero-orbit-dot--b" />
+              <span className="students-hero-orbit-center">
+                {isFaculty ? (
+                  <ClipboardList size={28} strokeWidth={1.85} />
+                ) : (
+                  <GraduationCap size={28} strokeWidth={1.85} />
+                )}
+              </span>
+            </div>
+          </div>
         </div>
       </header>
 
@@ -174,60 +240,94 @@ export default function Workspace() {
         </div>
       )}
 
-      {/* Teaching loads + rosters (faculty); subject lines (student) */}
-      <section className="workspace-section">
-        <h3 className="workspace-section-title">
-          <GraduationCap size={20} strokeWidth={2} aria-hidden />
-          {isFaculty ? 'Your sections & subjects' : 'Your classes this term'}
-        </h3>
-        {!assignments.length && (
-          <p className="muted workspace-empty">
-            {isFaculty
-              ? 'No teaching assignments yet. Ask MIS to assign your classes (program, section, and subject) in the provisioning console.'
-              : 'No class offerings match your program and section yet.'}
-          </p>
-        )}
-        <div className="workspace-load-grid">
-          {assignments.map((tl) => (
-            <article key={tl.teachingLoadId ?? tl.id} className="workspace-load-card">
-              <div className="workspace-load-head">
-                <span className="workspace-load-badge">{courseCode(tl.courseID)}</span>
-                <span className="workspace-load-section">{tl.section}</span>
-              </div>
-              <h4 className="workspace-load-subject">
-                {tl.subjectTitle}
-                <span className="workspace-load-code">{tl.subjectCode}</span>
-              </h4>
-              <p className="workspace-load-meta">{courseName(tl.courseID)}</p>
-              {isFaculty && Array.isArray(tl.students) && (
-                <div className="workspace-roster">
-                  <div className="workspace-roster-head">
-                    <Users size={16} />
-                    <span>Students in this section ({tl.students.length})</span>
-                  </div>
-                  {tl.students.length === 0 ? (
-                    <p className="muted workspace-roster-empty">No students match this course and section yet.</p>
-                  ) : (
-                    <ul className="workspace-roster-list">
-                      {tl.students.map((s) => (
-                        <li key={s.studentID}>
-                          <Link to={lmsPath(base, `/students/${s.studentID}`)} className="workspace-roster-link">
-                            {s.lastName}, {s.firstName}
-                          </Link>
-                          <span className="muted">{s.email}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              )}
-            </article>
-          ))}
-        </div>
-      </section>
+      <nav className="faculty-class-tabs workspace-tabs" role="tablist" aria-label="Workspace sections">
+        {workspaceTabs.map(({ id, label, Icon }) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            id={`workspace-tab-${id}`}
+            aria-selected={workspaceTab === id}
+            aria-controls={`workspace-panel-${id}`}
+            className={`faculty-class-tab ${workspaceTab === id ? 'is-active' : ''}`}
+            onClick={() => setWorkspaceTab(id)}
+          >
+            <Icon size={18} strokeWidth={2} aria-hidden />
+            {label}
+          </button>
+        ))}
+      </nav>
 
-      {isFaculty && (
-        <>
+      <div className="workspace-tab-panels">
+        {workspaceTab === 'classes' && (
+          <section
+            id="workspace-panel-classes"
+            role="tabpanel"
+            aria-labelledby="workspace-tab-classes"
+            className="faculty-class-panel workspace-tab-panel"
+          >
+            <p className="workspace-tab-intro muted">
+              {isFaculty
+                ? 'Your teaching assignments: open a student profile from the roster or use other tabs to post materials and activities.'
+                : 'Programs and sections you are enrolled in this term.'}
+            </p>
+            {!assignments.length && (
+              <p className="muted workspace-empty">
+                {isFaculty
+                  ? 'No teaching assignments yet. Ask MIS to assign your classes (program, section, and subject) in the provisioning console.'
+                  : 'No class offerings match your program and section yet.'}
+              </p>
+            )}
+            <div className="workspace-load-grid">
+              {assignments.map((tl) => (
+                <article key={tl.teachingLoadId ?? tl.id} className="workspace-load-card">
+                  <div className="workspace-load-head">
+                    <span className="workspace-load-badge">{courseCode(tl.courseID)}</span>
+                    <span className="workspace-load-section">{tl.section}</span>
+                  </div>
+                  <h4 className="workspace-load-subject">
+                    {tl.subjectTitle}
+                    <span className="workspace-load-code">{tl.subjectCode}</span>
+                  </h4>
+                  <p className="workspace-load-meta">{courseName(tl.courseID)}</p>
+                  {isFaculty && Array.isArray(tl.students) && (
+                    <div className="workspace-roster">
+                      <div className="workspace-roster-head">
+                        <Users size={16} />
+                        <span>Students in this section ({tl.students.length})</span>
+                      </div>
+                      {tl.students.length === 0 ? (
+                        <p className="muted workspace-roster-empty">No students match this course and section yet.</p>
+                      ) : (
+                        <ul className="workspace-roster-list">
+                          {tl.students.map((s) => (
+                            <li key={s.studentID}>
+                              <Link to={lmsPath(base, `/students/${s.studentID}`)} className="workspace-roster-link">
+                                {s.lastName}, {s.firstName}
+                              </Link>
+                              <span className="muted">{s.email}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {isFaculty && workspaceTab === 'create' && (
+          <section
+            id="workspace-panel-create"
+            role="tabpanel"
+            aria-labelledby="workspace-tab-create"
+            className="faculty-class-panel workspace-tab-panel workspace-tab-panel--create"
+          >
+            <p className="workspace-tab-intro muted">
+              Publish a new graded task or share a lesson link. Pick the class (subject · section) for each post.
+            </p>
           <section className="workspace-section workspace-card-block">
             <h3 className="workspace-section-title">
               <ClipboardList size={20} strokeWidth={2} aria-hidden />
@@ -235,46 +335,13 @@ export default function Workspace() {
             </h3>
             <form
               className="workspace-form"
-              onSubmit={async (e) => {
+              onSubmit={(e) => {
                 e.preventDefault()
                 if (!actForm.teachingLoadId) {
                   setMsg('Select a class (subject + section) first.')
                   return
                 }
-                setBusyId('createActivity')
-                setMsg('')
-                try {
-                  await apiFetch('/api/faculty/activities', {
-                    token,
-                    method: 'POST',
-                    body: {
-                      teachingLoadId: Number(actForm.teachingLoadId),
-                      title: actForm.title.trim(),
-                      description: actForm.description,
-                      deadline: actForm.deadline,
-                      allow_late: actForm.allow_late,
-                      maxScore: Number(actForm.maxScore) || 100,
-                      gradingPeriod: actForm.gradingPeriod,
-                      assessmentKind: actForm.assessmentKind,
-                    },
-                  })
-                  setMsg('Activity posted for that section.')
-                  setActForm({
-                    teachingLoadId: teachingOptions[0]?.value || '',
-                    title: '',
-                    description: '',
-                    deadline: '',
-                    allow_late: false,
-                    maxScore: 100,
-                    gradingPeriod: 'prelim',
-                    assessmentKind: 'activity',
-                  })
-                  await loadAll()
-                } catch (err) {
-                  setMsg(err?.message || 'Failed to create activity.')
-                } finally {
-                  setBusyId('')
-                }
+                setFacultyPublishConfirm('activity')
               }}
             >
               <label>
@@ -360,9 +427,11 @@ export default function Workspace() {
                 />
                 Allow late submissions
               </label>
-              <button type="submit" className="btn btn-primary" disabled={busyId === 'createActivity'}>
-                {busyId === 'createActivity' ? 'Publishing…' : 'Publish activity'}
-              </button>
+              <div className="workspace-form-actions">
+                <button type="submit" className="btn btn-primary workspace-form-submit" disabled={busyId === 'createActivity'}>
+                  {busyId === 'createActivity' ? 'Publishing…' : 'Publish activity'}
+                </button>
+              </div>
             </form>
           </section>
 
@@ -373,38 +442,13 @@ export default function Workspace() {
             </h3>
             <form
               className="workspace-form"
-              onSubmit={async (e) => {
+              onSubmit={(e) => {
                 e.preventDefault()
                 if (!matForm.teachingLoadId) {
                   setMsg('Select a class for this material.')
                   return
                 }
-                setBusyId('createMaterial')
-                setMsg('')
-                try {
-                  await apiFetch('/api/faculty/materials', {
-                    token,
-                    method: 'POST',
-                    body: {
-                      teachingLoadId: Number(matForm.teachingLoadId),
-                      title: matForm.title.trim(),
-                      content: matForm.content,
-                      link: matForm.link.trim(),
-                    },
-                  })
-                  setMsg('Material published.')
-                  setMatForm({
-                    teachingLoadId: teachingOptions[0]?.value || '',
-                    title: '',
-                    content: '',
-                    link: '',
-                  })
-                  await loadAll()
-                } catch (err) {
-                  setMsg(err?.message || 'Failed to post material.')
-                } finally {
-                  setBusyId('')
-                }
+                setFacultyPublishConfirm('material')
               }}
             >
               <label>
@@ -447,14 +491,28 @@ export default function Workspace() {
                   placeholder="https://…"
                 />
               </label>
-              <button type="submit" className="btn btn-primary" disabled={busyId === 'createMaterial'}>
-                {busyId === 'createMaterial' ? 'Posting…' : 'Post material'}
-              </button>
+              <div className="workspace-form-actions">
+                <button type="submit" className="btn btn-primary workspace-form-submit" disabled={busyId === 'createMaterial'}>
+                  {busyId === 'createMaterial' ? 'Posting…' : 'Post material'}
+                </button>
+              </div>
             </form>
           </section>
-        </>
-      )}
+        </section>
+        )}
 
+        {workspaceTab === 'materials' && (
+          <section
+            id="workspace-panel-materials"
+            role="tabpanel"
+            aria-labelledby="workspace-tab-materials"
+            className="faculty-class-panel workspace-tab-panel"
+          >
+            <p className="workspace-tab-intro muted">
+              {isFaculty
+                ? 'Lesson notes and links you have published for your sections (same list appears to enrolled students).'
+                : 'Readings, links, and notes your instructors posted for your classes.'}
+            </p>
       <section className="workspace-section">
         <h3 className="workspace-section-title">
           <BookOpen size={20} strokeWidth={2} aria-hidden />
@@ -480,7 +538,21 @@ export default function Workspace() {
           ))}
         </div>
       </section>
+        </section>
+        )}
 
+        {workspaceTab === 'activities' && (
+          <section
+            id="workspace-panel-activities"
+            role="tabpanel"
+            aria-labelledby="workspace-tab-activities"
+            className="faculty-class-panel workspace-tab-panel"
+          >
+            <p className="workspace-tab-intro muted">
+              {isFaculty
+                ? 'Track the class roster against each activity: who submitted, who needs a grade, and quick scoring.'
+                : 'Submit assignments before the deadline and view scores and instructor feedback when graded.'}
+            </p>
       <section className="workspace-section">
         <h3 className="workspace-section-title">
           <ClipboardList size={20} strokeWidth={2} aria-hidden />
@@ -519,26 +591,25 @@ export default function Workspace() {
                       )}
                       <p className="muted small">Submitted {new Date(a.mySubmission.submittedAt).toLocaleString()}</p>
                     </div>
+                  ) : a.mySubmission?.submittedAt ? (
+                    <div className="workspace-submission-success">
+                      <p className="workspace-submission-success-badge">
+                        <CheckCircle2 size={18} aria-hidden />
+                        Submitted successfully
+                      </p>
+                      {a.mySubmission.content ? (
+                        <div className="workspace-submission-success-body">{a.mySubmission.content}</div>
+                      ) : null}
+                      <p className="muted small">
+                        Awaiting grade · Submitted {new Date(a.mySubmission.submittedAt).toLocaleString()}
+                      </p>
+                    </div>
                   ) : (
                     <form
                       className="workspace-form"
-                      onSubmit={async (e) => {
+                      onSubmit={(e) => {
                         e.preventDefault()
-                        setBusyId(`submit-${a.id}`)
-                        setMsg('')
-                        try {
-                          await apiFetch(`/api/student/activities/${a.id}/submit`, {
-                            token,
-                            method: 'POST',
-                            body: { content: submissionDraft[a.id] || '' },
-                          })
-                          setMsg('Submission received.')
-                          await loadAll()
-                        } catch (err) {
-                          setMsg(err?.message || 'Submission failed.')
-                        } finally {
-                          setBusyId('')
-                        }
+                        setSubmitConfirmId(a.id)
                       }}
                     >
                       <label>Your work (paste text or describe what you attached externally)</label>
@@ -550,20 +621,23 @@ export default function Workspace() {
                         rows={4}
                         required
                       />
-                      <button type="submit" className="btn btn-primary" disabled={busyId === `submit-${a.id}`}>
-                        {busyId === `submit-${a.id}` ? (
-                          <>
-                            <Send size={16} /> Submitting…
-                          </>
-                        ) : (
-                          <>
-                            <Send size={16} /> Submit assignment
-                          </>
-                        )}
-                      </button>
-                      {a.mySubmission?.submittedAt && !a.mySubmission?.gradedAt && (
-                        <p className="muted small">Last submitted {new Date(a.mySubmission.submittedAt).toLocaleString()}</p>
-                      )}
+                      <div className="workspace-form-actions">
+                        <button
+                          type="submit"
+                          className="btn btn-primary workspace-form-submit"
+                          disabled={busyId === `submit-${a.id}`}
+                        >
+                          {busyId === `submit-${a.id}` ? (
+                            <>
+                              <Send size={16} aria-hidden /> Submitting…
+                            </>
+                          ) : (
+                            <>
+                              <Send size={16} aria-hidden /> Submit assignment
+                            </>
+                          )}
+                        </button>
+                      </div>
                     </form>
                   )}
                 </div>
@@ -693,6 +767,120 @@ export default function Workspace() {
           ))}
         </div>
       </section>
+          </section>
+        )}
+      </div>
+
+      {isStudent ? (
+        <ConfirmModal
+          open={submitConfirmId !== null}
+          title="Submit assignment?"
+          message="You can only submit once. After you submit, you cannot change your work. Continue?"
+          confirmLabel="Submit"
+          onCancel={() => setSubmitConfirmId(null)}
+          onConfirm={async () => {
+            const id = submitConfirmId
+            setSubmitConfirmId(null)
+            if (id == null) return
+            setBusyId(`submit-${id}`)
+            setMsg('')
+            try {
+              await apiFetch(`/api/student/activities/${id}/submit`, {
+                token,
+                method: 'POST',
+                body: { content: submissionDraft[id] || '' },
+              })
+              setMsg('Submitted successfully.')
+              await loadAll()
+            } catch (err) {
+              setMsg(err?.message || 'Submission failed.')
+            } finally {
+              setBusyId('')
+            }
+          }}
+        />
+      ) : null}
+
+      {isFaculty ? (
+        <ConfirmModal
+          open={facultyPublishConfirm !== null}
+          title={facultyPublishConfirm === 'material' ? 'Post material?' : 'Publish activity?'}
+          message={
+            facultyPublishConfirm === 'material'
+              ? 'Enrolled students will see this material in their Materials view. Continue?'
+              : 'Enrolled students will see this activity and can submit work. Continue?'
+          }
+          confirmLabel={facultyPublishConfirm === 'material' ? 'Post material' : 'Publish activity'}
+          onCancel={() => setFacultyPublishConfirm(null)}
+          onConfirm={async () => {
+            const kind = facultyPublishConfirm
+            setFacultyPublishConfirm(null)
+            if (kind === 'activity') {
+              setBusyId('createActivity')
+              setMsg('')
+              try {
+                await apiFetch('/api/faculty/activities', {
+                  token,
+                  method: 'POST',
+                  body: {
+                    teachingLoadId: Number(actForm.teachingLoadId),
+                    title: actForm.title.trim(),
+                    description: actForm.description,
+                    deadline: actForm.deadline,
+                    allow_late: actForm.allow_late,
+                    maxScore: Number(actForm.maxScore) || 100,
+                    gradingPeriod: actForm.gradingPeriod,
+                    assessmentKind: actForm.assessmentKind,
+                  },
+                })
+                setMsg('Activity posted for that section.')
+                setActForm({
+                  teachingLoadId: teachingOptions[0]?.value || '',
+                  title: '',
+                  description: '',
+                  deadline: '',
+                  allow_late: false,
+                  maxScore: 100,
+                  gradingPeriod: 'prelim',
+                  assessmentKind: 'activity',
+                })
+                await loadAll()
+              } catch (err) {
+                setMsg(err?.message || 'Failed to create activity.')
+              } finally {
+                setBusyId('')
+              }
+            } else if (kind === 'material') {
+              setBusyId('createMaterial')
+              setMsg('')
+              try {
+                await apiFetch('/api/faculty/materials', {
+                  token,
+                  method: 'POST',
+                  body: {
+                    teachingLoadId: Number(matForm.teachingLoadId),
+                    title: matForm.title.trim(),
+                    content: matForm.content,
+                    link: matForm.link.trim(),
+                  },
+                })
+                setMsg('Material published.')
+                setMatForm({
+                  teachingLoadId: teachingOptions[0]?.value || '',
+                  title: '',
+                  content: '',
+                  link: '',
+                })
+                await loadAll()
+              } catch (err) {
+                setMsg(err?.message || 'Failed to post material.')
+              } finally {
+                setBusyId('')
+              }
+            }
+          }}
+        />
+      ) : null}
     </div>
   )
 }

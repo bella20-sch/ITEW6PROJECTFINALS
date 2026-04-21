@@ -1,4 +1,5 @@
-import { NavLink } from 'react-router-dom'
+import { useState } from 'react'
+import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
   Users,
@@ -7,7 +8,10 @@ import {
   FileBarChart,
   X,
   UserPlus,
+  LogOut,
 } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
 
 const misNavItems = [
   { path: '/mis', end: true, icon: LayoutDashboard, label: 'MIS dashboard' },
@@ -19,12 +23,24 @@ const misNavItems = [
 ]
 
 export default function MisSidebar({ open, onClose, collapsed }) {
+  const { currentUser, logout } = useAuth()
+  const navigate = useNavigate()
+  const { showToast } = useToast()
+  const [loggingOut, setLoggingOut] = useState(false)
+
+  const handleLogout = async () => {
+    onClose()
+    setLoggingOut(true)
+    await logout()
+    showToast('Logged out successfully.', 'success')
+    setTimeout(() => navigate('/login', { replace: true }), 1200)
+    setLoggingOut(false)
+  }
+
   return (
     <>
       <div className={`sidebar-overlay ${open ? 'active' : ''}`} onClick={onClose} aria-hidden="true" />
-      <aside
-        className={`sidebar sidebar--mis ${open ? 'sidebar-open' : ''} ${collapsed ? 'sidebar--collapsed' : ''}`}
-      >
+      <aside className={`sidebar ${open ? 'sidebar-open' : ''} ${collapsed ? 'sidebar--collapsed' : ''}`}>
         <button type="button" className="sidebar-close-btn" onClick={onClose} aria-label="Close menu">
           <X size={24} />
         </button>
@@ -39,10 +55,12 @@ export default function MisSidebar({ open, onClose, collapsed }) {
               e.target.onError = null
             }}
           />
-          <span className="sidebar-title">MIS console</span>
+          <div className="sidebar-brand-text">
+            <span className="sidebar-title sidebar-title--portal">MIS Console</span>
+            <span className="sidebar-school-year">School Year 2024-2025</span>
+          </div>
         </div>
-        <p className="sidebar-mis-kicker">College of Computer Studies</p>
-        <nav className="sidebar-nav" aria-label="MIS navigation">
+        <nav className="sidebar-nav">
           {misNavItems.map(({ path, end, icon: Icon, label }) => (
             <NavLink
               key={path}
@@ -57,17 +75,27 @@ export default function MisSidebar({ open, onClose, collapsed }) {
             </NavLink>
           ))}
         </nav>
+        {currentUser && (
+          <div className="sidebar-logout-wrap">
+            <button
+              type="button"
+              className="sidebar-logout-btn"
+              onClick={handleLogout}
+              disabled={loggingOut}
+              title="Logout"
+            >
+              <LogOut size={20} strokeWidth={2} />
+              <span className="sidebar-logout-btn-text">{loggingOut ? 'Logging out…' : 'Logout'}</span>
+            </button>
+          </div>
+        )}
         <div className="sidebar-footer">
-          <span className="sidebar-version">MIS · v1.0</span>
+          <span className="sidebar-version">v1.0</span>
           <p className="sidebar-credits">
-            System developed by:
-            <br />
-            Bella, Mourine Kate Oshlen C.
-            <br />
-            Borabo, Nicole S.
-            <br />
-            Lorica, Ken Eubert R.
-            <br />
+            System developed by:<br />
+            Bella, Mourine Kate Oshlen C.<br />
+            Borabo, Nicole S.<br />
+            Lorica, Ken Eubert R.<br />
             Mendoza, Mayen Sofia T.
           </p>
         </div>

@@ -353,7 +353,7 @@ export default function StudentProfile() {
 
   if (loading) return <ContentLoadingSkeleton title="Loading student profile…" />
   if (!student) {
-    const back = isStudent ? <Link to="/">Back to dashboard</Link> : <Link to={lmsPath(base, '/students')}>Back to directory</Link>
+    const back = isStudent ? <Link to={lmsPath(base, '/')}>Back to dashboard</Link> : <Link to={lmsPath(base, '/students')}>Back to directory</Link>
     return (
       <div className="page">
         <p>{loadError || 'Student not found.'}</p>
@@ -431,21 +431,29 @@ export default function StudentProfile() {
 
   return (
     <div className="page">
-      <div className="profile-toolbar">
-        {isStudent ? (
-          <Link to="/" className="back-link"><ArrowLeft size={18} /> Back to dashboard</Link>
-        ) : (
-          <Link to={lmsPath(base, '/students')} className="back-link"><ArrowLeft size={18} /> Back to Students</Link>
-        )}
-        <div>
-          {isAdmin && (
-            <Link to={lmsPath(base, `/students/${id}/edit`)} className="btn btn-outline">
-              <Pencil size={16} /> Edit
-            </Link>
-          )}
-          {isAdmin && <button className="btn btn-danger" onClick={handleDeleteStudent}><Trash2 size={16} /> Delete</button>}
+      {isStudent ? (
+        <div className="profile-toolbar">
+          <Link to={lmsPath(base, '/')} className="back-link">
+            <ArrowLeft size={18} strokeWidth={2} aria-hidden />
+            Back to dashboard
+          </Link>
         </div>
-      </div>
+      ) : (
+        <div className="profile-toolbar">
+          <Link to={lmsPath(base, '/students')} className="back-link">
+            <ArrowLeft size={18} strokeWidth={2} aria-hidden />
+            Back to Students
+          </Link>
+          <div>
+            {isAdmin && (
+              <Link to={lmsPath(base, `/students/${id}/edit`)} className="btn btn-outline">
+                <Pencil size={16} /> Edit
+              </Link>
+            )}
+            {isAdmin && <button className="btn btn-danger" onClick={handleDeleteStudent}><Trash2 size={16} /> Delete</button>}
+          </div>
+        </div>
+      )}
 
       {isStudent && (
         <section className="profile-enrolled" aria-labelledby="profile-enrolled-heading">

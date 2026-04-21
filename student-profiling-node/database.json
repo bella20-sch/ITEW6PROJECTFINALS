@@ -603,6 +603,57 @@
       "createdAt": "2026-01-01T00:00:00.000Z",
       "gradingPeriod": "prelim",
       "assessmentKind": "activity"
+    },
+    {
+      "classActivityID": 2,
+      "facultyID": 1,
+      "teachingLoadID": 1,
+      "courseID": 1,
+      "section": "4IT-B",
+      "subjectCode": "CCS101",
+      "subjectTitle": "Computer Programming 1",
+      "title": "Act 2",
+      "description": "Pass the Link",
+      "deadline": "2026-04-22T15:02",
+      "allow_late": false,
+      "maxScore": 100,
+      "createdAt": "2026-04-21T04:02:34.086Z",
+      "gradingPeriod": "prelim",
+      "assessmentKind": "activity"
+    },
+    {
+      "classActivityID": 3,
+      "facultyID": 1,
+      "teachingLoadID": 1,
+      "courseID": 1,
+      "section": "4IT-B",
+      "subjectCode": "CCS101",
+      "subjectTitle": "Computer Programming 1",
+      "title": "Prelim Exam",
+      "description": "Paste the link",
+      "deadline": "2026-04-24T12:17",
+      "allow_late": false,
+      "maxScore": 100,
+      "createdAt": "2026-04-21T04:17:58.071Z",
+      "gradingPeriod": "prelim",
+      "assessmentKind": "exam"
+    },
+    {
+      "classActivityID": 4,
+      "facultyID": 1,
+      "teachingLoadID": 1,
+      "courseID": 1,
+      "section": "4IT-B",
+      "subjectCode": "CCS101",
+      "subjectTitle": "Computer Programming 1",
+      "title": "Midterm Act 1",
+      "description": "Paste the link",
+      "deadline": "2026-04-24T12:21",
+      "allow_late": false,
+      "maxScore": 100,
+      "createdAt": "2026-04-21T04:21:42.520Z",
+      "gradingPeriod": "midterm",
+      "assessmentKind": "activity"
     }
   ],
   "classActivitySubmissions": [
@@ -615,6 +666,26 @@
       "score": 90,
       "feedback": "Good work.",
       "gradedAt": "2026-01-03T00:00:00.000Z"
+    },
+    {
+      "submissionID": 2,
+      "classActivityID": 2,
+      "studentID": 1,
+      "content": "https://pinnacle.pnc.edu.ph/student",
+      "submittedAt": "2026-04-21T04:14:51.600Z",
+      "score": 95,
+      "feedback": "Good Work!",
+      "gradedAt": "2026-04-21T04:16:34.584Z"
+    },
+    {
+      "submissionID": 3,
+      "classActivityID": 3,
+      "studentID": 1,
+      "content": "http://localhost:3000/activities?tl=1",
+      "submittedAt": "2026-04-21T04:18:29.921Z",
+      "score": null,
+      "feedback": "",
+      "gradedAt": null
     }
   ],
   "sectionMaterials": [],

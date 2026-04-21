@@ -167,6 +167,17 @@ const assertFacultyOwnsTeachingLoad = (db, req, tlId) => {
     return { ok: true, tl };
 };
 
+const assertStudentEnrolledInTeachingLoad = (db, req, tlId) => {
+    const tl = (db.teachingLoads || []).find((t) => Number(t.teachingLoadID) === Number(tlId));
+    if (!tl) return { ok: false, status: 404, msg: 'Class not found.' };
+    if (req.user?.role !== 'Student') return { ok: false, status: 403, msg: 'Students only.' };
+    const me = (db.students || []).find((s) => Number(s.studentID) === Number(req.user.id));
+    if (!me || !studentMatchesLoad(me, tl)) {
+        return { ok: false, status: 403, msg: 'You are not enrolled in this class.' };
+    }
+    return { ok: true, tl };
+};
+
 const getPeriodGradeRow = (db, teachingLoadID, studentID, schoolYear, semester, period) => {
     const arr = db.facultyStudentPeriodGrades || [];
     return arr.find(
@@ -198,6 +209,98 @@ const upsertPeriodGradeRow = (db, teachingLoadID, studentID, schoolYear, semeste
     }
     Object.assign(row, patch);
     return row;
+};
+
+const computeGradebookRowForStudent = (db, tl, st, schoolYear, semester) => {
+    const sid = Number(st.studentID);
+    const periods = ['prelim', 'midterm', 'finals'];
+    const periodTotals = [];
+    const byPeriod = {};
+    periods.forEach((period) => {
+        const activityPct =
+            computedAssessmentAveragePercent(db, tl.teachingLoadID, sid, period, 'activity') ?? 0;
+        const g = getPeriodGradeRow(db, tl.teachingLoadID, sid, schoolYear, semester, period);
+        const attendancePct = g != null ? Number(g.attendancePct) || 0 : 0;
+        const quizFromActs = computedAssessmentAveragePercent(db, tl.teachingLoadID, sid, period, 'quiz');
+        const examFromActs = computedAssessmentAveragePercent(db, tl.teachingLoadID, sid, period, 'exam');
+        const quizManualPct = Number(g?.quizPct) || 0;
+        const examManualPct = Number(g?.examPct) || 0;
+        const quizPct = quizFromActs != null ? quizFromActs : quizManualPct;
+        const examPct = examFromActs != null ? examFromActs : examManualPct;
+        const periodTotal = periodWeightedTotal(activityPct, attendancePct, quizPct, examPct);
+        periodTotals.push(periodTotal);
+        byPeriod[period] = {
+            activityPct,
+            attendancePct,
+            quizPct,
+            examPct,
+            quizManualPct,
+            examManualPct,
+            quizFromPostedActivities: quizFromActs != null,
+            examFromPostedActivities: examFromActs != null,
+            periodTotal,
+        };
+    });
+    const semesterAverage =
+        periodTotals.length === 3
+            ? Math.round(((periodTotals[0] + periodTotals[1] + periodTotals[2]) / 3) * 100) / 100
+            : null;
+    return {
+        studentID: sid,
+        studentName: `${st.lastName}, ${st.firstName}`.trim(),
+        periods: byPeriod,
+        semesterAverage,
+    };
+};
+
+/** One row per class activity / quiz / exam for a single student (student gradebook detail). */
+const computeStudentAssessmentItems = (db, tl, studentID) => {
+    const sid = Number(studentID);
+    const subs = db.classActivitySubmissions || [];
+    const periodOrder = { prelim: 0, midterm: 1, finals: 2 };
+    const kindOrder = { activity: 0, quiz: 1, exam: 2 };
+    const acts = (db.classActivities || [])
+        .filter((a) => Number(a.teachingLoadID) === Number(tl.teachingLoadID))
+        .map(normActivityFields)
+        .sort((a, b) => {
+            const pa = periodOrder[a.gradingPeriod] ?? 9;
+            const pb = periodOrder[b.gradingPeriod] ?? 9;
+            if (pa !== pb) return pa - pb;
+            const ka = kindOrder[a.assessmentKind] ?? 9;
+            const kb = kindOrder[b.assessmentKind] ?? 9;
+            if (ka !== kb) return ka - kb;
+            return String(a.title || '').localeCompare(String(b.title || ''));
+        });
+    return acts.map((act) => {
+        const sub = subs.find(
+            (s) => Number(s.classActivityID) === Number(act.classActivityID) && Number(s.studentID) === sid,
+        );
+        const max = Number(act.maxScore) > 0 ? Number(act.maxScore) : 100;
+        let score = null;
+        let percent = null;
+        let status = 'no_submission';
+        if (sub) {
+            if (sub.score != null && sub.gradedAt != null) {
+                score = Number(sub.score);
+                percent = Math.round((score / max) * 10000) / 100;
+                status = 'graded';
+            } else if (sub.submittedAt) {
+                status = 'pending';
+            }
+        }
+        return {
+            classActivityID: act.classActivityID,
+            title: act.title || 'Untitled',
+            assessmentKind: act.assessmentKind || 'activity',
+            gradingPeriod: act.gradingPeriod || 'prelim',
+            maxScore: max,
+            score,
+            percent,
+            status,
+            submittedAt: sub?.submittedAt || null,
+            gradedAt: sub?.gradedAt || null,
+        };
+    });
 };
 
 const normEmail = (v) => String(v || '').trim().toLowerCase();
@@ -246,6 +349,7 @@ app.post('/api/auth/login', (req, res) => {
                 firstName: faculty.firstName,
                 lastName: faculty.lastName,
                 name: [faculty.firstName, faculty.lastName].filter(Boolean).join(' ').trim(),
+                photo: faculty.photo || '',
             },
         });
     }
@@ -269,6 +373,7 @@ app.post('/api/auth/login', (req, res) => {
                 firstName: student.firstName,
                 lastName: student.lastName,
                 name: [student.firstName, student.lastName].filter(Boolean).join(' ').trim(),
+                photo: student.photo || '',
             },
         });
     }
@@ -282,6 +387,76 @@ app.post('/api/auth/logout', authenticate, (req, res) => {
 
 app.get('/api/user', authenticate, (req, res) => res.json(req.user));
 
+/** Must be registered before `/api/meta/:type` or `dashboard-insights` is captured as :type and 404s. */
+app.get('/api/meta/dashboard-insights', authenticate, (req, res) => {
+    const db = getDb();
+    if (req.user?.role === 'Student') {
+        return res.status(403).json({ message: 'Not available.' });
+    }
+    let studentIds;
+    if (req.user?.role === 'Faculty') {
+        const keys = facultyManagedSectionKeys(db, Number(req.user.id));
+        if (!keys.size) {
+            return res.json({
+                topSkills: [],
+                pendingViolations: 0,
+                resolvedViolations: 0,
+                recentViolations: [],
+                totalViolations: 0,
+            });
+        }
+        const studs = db.students.filter((s) => studentInFacultyManagedSections(s, keys));
+        studentIds = new Set(studs.map((s) => s.studentID));
+    } else {
+        studentIds = new Set(db.students.map((s) => s.studentID));
+    }
+
+    const skillCounts = {};
+    (db.skills || []).forEach((sk) => {
+        if (!studentIds.has(sk.studentID)) return;
+        const name = sk.skillName || sk.name || 'Unknown';
+        skillCounts[name] = (skillCounts[name] || 0) + 1;
+    });
+    const topSkills = Object.entries(skillCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([name, count]) => ({ name, count }));
+
+    const allViolations = [];
+    (db.violations || []).forEach((v) => {
+        if (!studentIds.has(v.studentID)) return;
+        const st = db.students.find((s) => s.studentID === v.studentID);
+        const studentName = st ? `${st.lastName}, ${st.firstName}` : `ID ${v.studentID}`;
+        allViolations.push({ ...v, studentName });
+    });
+    const pendingViolations = allViolations.filter((v) => v.status === 'Pending').length;
+    const resolvedViolations = allViolations.filter((v) => v.status === 'Resolved').length;
+    const recentViolations = [...allViolations]
+        .sort(
+            (a, b) =>
+                new Date(b.violationDate || b.dateReported || b.created_at || 0) -
+                new Date(a.violationDate || a.dateReported || a.created_at || 0),
+        )
+        .slice(0, 3)
+        .map((v) => ({
+            violationID: v.violationID,
+            studentID: v.studentID,
+            studentName: v.studentName,
+            violationType: v.violationType || v.type,
+            severity: v.severity || v.severityLevel || 'Minor',
+            status: v.status,
+            violationDate: v.violationDate || v.dateReported,
+            created_at: v.created_at,
+        }));
+
+    return res.json({
+        topSkills,
+        pendingViolations,
+        resolvedViolations,
+        recentViolations,
+        totalViolations: allViolations.length,
+    });
+});
 
 // --- META ENDPOINTS (Departments, Courses, Faculty) ---
 app.get('/api/meta/:type', authenticate, (req, res) => {
@@ -375,7 +550,6 @@ app.delete('/api/meta/:type/:id', authenticate, (req, res) => {
     saveDb(db);
     return res.json({ ok: true });
 });
-
 
 const assertFacultyMayAccessStudent = (db, req, studentId) => {
     if (req.user?.role !== 'Faculty') return { ok: true };
@@ -975,6 +1149,9 @@ app.post('/api/student/activities/:id/submit', authenticate, requireStudent, (re
     if (sub && sub.gradedAt) {
         return res.status(400).json({ message: 'This activity is already graded.' });
     }
+    if (sub && sub.submittedAt) {
+        return res.status(400).json({ message: 'You have already submitted. You cannot submit again.' });
+    }
     const now = new Date().toISOString();
     if (sub) {
         sub.content = content;
@@ -1071,6 +1248,47 @@ app.get('/api/faculty/teaching-loads/:id/classroom', authenticate, requireFacult
     });
 });
 
+app.get('/api/student/teaching-loads/:id/classroom', authenticate, requireStudent, (req, res) => {
+    const db = getDb();
+    const chk = assertStudentEnrolledInTeachingLoad(db, req, req.params.id);
+    if (!chk.ok) return res.status(chk.status).json({ message: chk.msg });
+    const tl = chk.tl;
+    const sid = Number(req.user.id);
+    const crs = db.courses.find((c) => Number(c.courseID) === Number(tl.courseID));
+    const materials = (db.sectionMaterials || []).filter((m) => Number(m.teachingLoadID) === Number(tl.teachingLoadID));
+    const subsAll = db.classActivitySubmissions || [];
+    const activities = (db.classActivities || [])
+        .filter((a) => Number(a.teachingLoadID) === Number(tl.teachingLoadID))
+        .map((a) => {
+            const n = normActivityFields(a);
+            const my = subsAll.find(
+                (s) => Number(s.classActivityID) === Number(n.classActivityID) && Number(s.studentID) === sid,
+            );
+            return { ...n, id: n.classActivityID, mySubmission: my || null };
+        });
+    const classmates = (db.students || [])
+        .filter((s) => studentMatchesLoad(s, tl))
+        .map((s) => ({
+            studentID: s.studentID,
+            firstName: s.firstName,
+            lastName: s.lastName,
+        }))
+        .sort((a, b) =>
+            String(a.lastName).localeCompare(String(b.lastName)) || String(a.firstName).localeCompare(String(b.firstName)),
+        );
+    return res.json({
+        teachingLoad: {
+            ...tl,
+            id: tl.teachingLoadID,
+            courseCode: crs?.courseCode || '',
+            courseName: crs?.courseName || '',
+        },
+        classmates,
+        materials,
+        activities,
+    });
+});
+
 app.get('/api/faculty/teaching-loads/:id/gradebook', authenticate, requireFaculty, (req, res) => {
     const db = getDb();
     const chk = assertFacultyOwnsTeachingLoad(db, req, req.params.id);
@@ -1079,48 +1297,8 @@ app.get('/api/faculty/teaching-loads/:id/gradebook', authenticate, requireFacult
     const schoolYear = String(req.query.schoolYear || '2025-2026');
     const semester = Number(req.query.semester) === 2 ? 2 : 1;
     const students = (db.students || []).filter((s) => studentMatchesLoad(s, tl));
-    const periods = ['prelim', 'midterm', 'finals'];
     const weights = { activity: 0.2, attendance: 0.1, quiz: 0.2, exam: 0.5 };
-    const rows = students.map((st) => {
-        const sid = Number(st.studentID);
-        const byPeriod = {};
-        const periodTotals = [];
-        periods.forEach((period) => {
-            const activityPct =
-                computedAssessmentAveragePercent(db, tl.teachingLoadID, sid, period, 'activity') ?? 0;
-            const g = getPeriodGradeRow(db, tl.teachingLoadID, sid, schoolYear, semester, period);
-            const attendancePct = g != null ? Number(g.attendancePct) || 0 : 0;
-            const quizFromActs = computedAssessmentAveragePercent(db, tl.teachingLoadID, sid, period, 'quiz');
-            const examFromActs = computedAssessmentAveragePercent(db, tl.teachingLoadID, sid, period, 'exam');
-            const quizManualPct = Number(g?.quizPct) || 0;
-            const examManualPct = Number(g?.examPct) || 0;
-            const quizPct = quizFromActs != null ? quizFromActs : quizManualPct;
-            const examPct = examFromActs != null ? examFromActs : examManualPct;
-            const periodTotal = periodWeightedTotal(activityPct, attendancePct, quizPct, examPct);
-            periodTotals.push(periodTotal);
-            byPeriod[period] = {
-                activityPct,
-                attendancePct,
-                quizPct,
-                examPct,
-                quizManualPct,
-                examManualPct,
-                quizFromPostedActivities: quizFromActs != null,
-                examFromPostedActivities: examFromActs != null,
-                periodTotal,
-            };
-        });
-        const semesterAverage =
-            periodTotals.length === 3
-                ? Math.round(((periodTotals[0] + periodTotals[1] + periodTotals[2]) / 3) * 100) / 100
-                : null;
-        return {
-            studentID: sid,
-            studentName: `${st.lastName}, ${st.firstName}`.trim(),
-            periods: byPeriod,
-            semesterAverage,
-        };
-    });
+    const rows = students.map((st) => computeGradebookRowForStudent(db, tl, st, schoolYear, semester));
     return res.json({
         schoolYear,
         semester,
@@ -1128,6 +1306,30 @@ app.get('/api/faculty/teaching-loads/:id/gradebook', authenticate, requireFacult
         weightsNote:
             'Period grade = 20% activities + 10% attendance + 20% quizzes + 50% exams (each 0–100). Quiz/exam posted as graded activities override manual inputs when present.',
         students: rows,
+    });
+});
+
+app.get('/api/student/teaching-loads/:id/gradebook', authenticate, requireStudent, (req, res) => {
+    const db = getDb();
+    const chk = assertStudentEnrolledInTeachingLoad(db, req, req.params.id);
+    if (!chk.ok) return res.status(chk.status).json({ message: chk.msg });
+    const tl = chk.tl;
+    const sid = Number(req.user.id);
+    const me = (db.students || []).find((s) => Number(s.studentID) === sid);
+    if (!me) return res.status(404).json({ message: 'Student not found.' });
+    const schoolYear = String(req.query.schoolYear || '2025-2026');
+    const semester = Number(req.query.semester) === 2 ? 2 : 1;
+    const weights = { activity: 0.2, attendance: 0.1, quiz: 0.2, exam: 0.5 };
+    const row = computeGradebookRowForStudent(db, tl, me, schoolYear, semester);
+    const assessmentItems = computeStudentAssessmentItems(db, tl, sid);
+    return res.json({
+        schoolYear,
+        semester,
+        weights,
+        weightsNote:
+            'Period grade = 20% activities + 10% attendance + 20% quizzes + 50% exams (each 0–100). Quiz/exam posted as graded activities override manual inputs when present.',
+        student: row,
+        assessmentItems,
     });
 });
 
