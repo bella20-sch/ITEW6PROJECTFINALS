@@ -5,10 +5,10 @@ import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { getTheme, setTheme } from '../lib/theme'
 import { homePathForRole } from '../lib/lmsPaths'
-import logoUrl from '../assets/logo.png'
 
 const FALLBACK_LOGO_URL =
   'https://upload.wikimedia.org/wikipedia/en/thumb/e/ef/Pamantasan_ng_Cabuyao_logo.svg/1200px-Pamantasan_ng_Cabuyao_logo.svg.png'
+const APP_LOGO_SRC = '/logo.png?v=20260422'
 
 export default function Login() {
   const { login, ready, isAuthenticated, currentUser } = useAuth()
@@ -106,7 +106,7 @@ export default function Login() {
         <span className="auth-kicker">CCS Administration</span>
         <div className="auth-left-logo">
           <img
-            src={logoUrl}
+            src={APP_LOGO_SRC}
             alt="CCS Logo"
             onError={(e) => {
               e.target.src = FALLBACK_LOGO_URL
