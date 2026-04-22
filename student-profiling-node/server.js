@@ -5,13 +5,22 @@ const path = require('path');
 const jwt = require('jsonwebtoken');
 
 const app = express();
-const PORT = 5000;
+const PORT = Number(process.env.PORT) || 5000;
 const SECRET_KEY = 'secret-key';
 const DB_FILE = path.join(__dirname, 'database.json');
 
 app.use(cors());
 /* Default json limit is 100kb — base64 photos (students/faculty) exceed that and the body is rejected. */
 app.use(express.json({ limit: '15mb' }));
+
+/** Root — browsers hit `/` with no path; API lives under `/api`. */
+app.get('/', (_req, res) => {
+    res.type('html').send(
+        '<!DOCTYPE html><meta charset="utf-8"><title>Student Profiling API</title>' +
+            '<p>This URL is the <strong>backend API</strong> only (not the LMS UI).</p>' +
+            '<p>Try <a href="/api/health">/api/health</a> to confirm the server is up.</p>'
+    );
+});
 
 /** Public liveness: process up + database file readable (used by LMS bootstrap / refresh). */
 app.get('/api/health', (_req, res) => {
