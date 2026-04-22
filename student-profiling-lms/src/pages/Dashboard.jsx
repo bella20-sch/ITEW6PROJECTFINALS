@@ -32,6 +32,8 @@ function isPastDeadline(value) {
   return Number.isFinite(t) && t < Date.now()
 }
 
+const FAILING_PERCENT_THRESHOLD = 60
+
 export default function Dashboard() {
   const { students, courses, faculty, profiles } = useData()
   const { currentUser, token } = useAuth()
@@ -241,7 +243,7 @@ export default function Dashboard() {
         if (sub?.gradedAt) {
           gradedCount += 1
           const pct = max > 0 ? (Number(sub.score) / max) * 100 : null
-          if (pct != null && Number.isFinite(pct) && pct < 75) {
+          if (pct != null && Number.isFinite(pct) && pct < FAILING_PERCENT_THRESHOLD) {
             failingCounts.set(sid, (failingCounts.get(sid) || 0) + 1)
           }
         }
@@ -425,7 +427,7 @@ export default function Dashboard() {
                 <span className="dash-stat-tile-icon"><UserX size={20} strokeWidth={2} /></span>
                 <span className="dash-stat-tile-copy">
                   <span className="dash-stat-tile-value">{facultySummary.failingStudents.length}</span>
-                  <span className="dash-stat-tile-label">Students below 75%</span>
+                  <span className="dash-stat-tile-label">Students below {FAILING_PERCENT_THRESHOLD}%</span>
                 </span>
               </div>
             </div>
