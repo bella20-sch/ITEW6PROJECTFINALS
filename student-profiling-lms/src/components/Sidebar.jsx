@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { LayoutDashboard, Users, BookOpen, UserCircle, FileBarChart, X, ClipboardList, LogOut, FileText } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
+import logoUrl from '../assets/logo.png'
 
 const FALLBACK_LOGO_URL =
   'https://upload.wikimedia.org/wikipedia/en/thumb/e/ef/Pamantasan_ng_Cabuyao_logo.svg/1200px-Pamantasan_ng_Cabuyao_logo.svg.png'
@@ -66,7 +67,7 @@ export default function Sidebar({ open, onClose, collapsed }) {
         </button>
       <div className="sidebar-brand">
         <img
-          src="/logo.svg"
+          src={logoUrl}
           alt="CCS Logo"
           className="sidebar-logo-image"
           onError={(e) => {
