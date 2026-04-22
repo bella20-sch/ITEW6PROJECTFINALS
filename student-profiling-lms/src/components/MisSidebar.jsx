@@ -49,7 +49,7 @@ export default function MisSidebar({ open, onClose, collapsed }) {
         </button>
         <div className="sidebar-brand">
           <img
-            src="/logo.png"
+            src="/logo.svg"
             alt="CCS Logo"
             className="sidebar-logo-image"
             onError={(e) => {

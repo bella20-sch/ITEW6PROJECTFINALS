@@ -105,7 +105,7 @@ export default function Login() {
         <span className="auth-kicker">CCS Administration</span>
         <div className="auth-left-logo">
           <img
-            src="/logo.png"
+            src="/logo.svg"
             alt="CCS Logo"
             onError={(e) => {
               e.target.src = FALLBACK_LOGO_URL
