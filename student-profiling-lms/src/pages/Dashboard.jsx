@@ -26,12 +26,23 @@ function MiniBar({ label, value, max, color = '#fb923c' }) {
   )
 }
 
+function isPastDeadline(value) {
+  if (!value) return false
+  const t = new Date(value).getTime()
+  return Number.isFinite(t) && t < Date.now()
+}
+
 export default function Dashboard() {
   const { students, courses, faculty, profiles } = useData()
   const { currentUser, token } = useAuth()
   const base = useLmsBase()
   const [insights, setInsights] = useState(null)
   const [insightsStatus, setInsightsStatus] = useState('idle')
+  const [roleScope, setRoleScope] = useState({
+    status: 'idle',
+    assignments: [],
+    activities: [],
+  })
 
   useEffect(() => {
     if (!token || currentUser?.role === 'Student') {
@@ -59,8 +70,37 @@ export default function Dashboard() {
       cancelled = true
     }
   }, [token, currentUser?.role])
+  useEffect(() => {
+    if (!token || (currentUser?.role !== 'Faculty' && currentUser?.role !== 'Student')) {
+      setRoleScope({ status: 'idle', assignments: [], activities: [] })
+      return
+    }
+    let cancelled = false
+    setRoleScope((p) => ({ ...p, status: 'loading' }))
+    ;(async () => {
+      try {
+        const [assignments, activities] = await Promise.all([
+          apiFetch('/api/me/assignments', { token }),
+          apiFetch('/api/me/activities', { token }),
+        ])
+        if (!cancelled) {
+          setRoleScope({
+            status: 'ready',
+            assignments: Array.isArray(assignments) ? assignments : [],
+            activities: Array.isArray(activities) ? activities : [],
+          })
+        }
+      } catch {
+        if (!cancelled) setRoleScope({ status: 'error', assignments: [], activities: [] })
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [token, currentUser?.role])
   const isFaculty = currentUser?.role === 'Faculty'
   const isStudent = currentUser?.role === 'Student'
+  const isAdmin = currentUser?.role === 'Admin'
   const myFacultyId = currentUser?.id
   const facultyHubPath =
     isFaculty && myFacultyId != null && myFacultyId !== ''
@@ -146,6 +186,303 @@ export default function Dashboard() {
   }, [students, courses, profiles, insights])
 
   const enrolledPct = students.length > 0 ? Math.round((s.enrolled / students.length) * 100) : 0
+
+  const studentSummary = useMemo(() => {
+    const assignments = roleScope.assignments || []
+    const activities = roleScope.activities || []
+    const graded = activities.filter((a) => a?.mySubmission?.gradedAt)
+    const awaiting = activities.filter((a) => a?.mySubmission?.submittedAt && !a?.mySubmission?.gradedAt)
+    const pending = activities.filter((a) => !a?.mySubmission?.submittedAt)
+    const overdue = pending.filter((a) => isPastDeadline(a?.deadline))
+    const avgPct = graded.length
+      ? Math.round(
+        (graded.reduce((sum, a) => {
+          const max = Number(a?.maxScore) > 0 ? Number(a.maxScore) : 100
+          const score = Number(a?.mySubmission?.score)
+          if (!Number.isFinite(score) || max <= 0) return sum
+          return sum + (score / max) * 100
+        }, 0) / graded.length) * 100,
+      ) / 100
+      : null
+    return { assignments, activities, graded, awaiting, pending, overdue, avgPct }
+  }, [roleScope.assignments, roleScope.activities])
+
+  const facultySummary = useMemo(() => {
+    const assignments = roleScope.assignments || []
+    const activities = roleScope.activities || []
+    const studentsByLoad = new Map()
+    const studentNameById = new Map()
+    assignments.forEach((a) => {
+      const loadId = Number(a.teachingLoadId ?? a.teachingLoadID ?? a.id)
+      const list = Array.isArray(a.students) ? a.students : []
+      studentsByLoad.set(loadId, list)
+      list.forEach((st) => {
+        const sid = Number(st.studentID)
+        if (!studentNameById.has(sid)) {
+          studentNameById.set(sid, `${st.lastName || ''}, ${st.firstName || ''}`.replace(/^,\s*/, '').trim())
+        }
+      })
+    })
+
+    let gradedCount = 0
+    let awaitingCount = 0
+    let overdueMissingCount = 0
+    const failingCounts = new Map()
+    const overdueRows = []
+
+    activities.forEach((a) => {
+      const submissions = Array.isArray(a.submissions) ? a.submissions : []
+      const max = Number(a.maxScore) > 0 ? Number(a.maxScore) : 100
+      const submittedIds = new Set()
+      submissions.forEach((sub) => {
+        const sid = Number(sub.studentID)
+        if (sub?.submittedAt) submittedIds.add(sid)
+        if (sub?.submittedAt && !sub?.gradedAt) awaitingCount += 1
+        if (sub?.gradedAt) {
+          gradedCount += 1
+          const pct = max > 0 ? (Number(sub.score) / max) * 100 : null
+          if (pct != null && Number.isFinite(pct) && pct < 75) {
+            failingCounts.set(sid, (failingCounts.get(sid) || 0) + 1)
+          }
+        }
+      })
+
+      if (isPastDeadline(a?.deadline)) {
+        const loadId = Number(a.teachingLoadID ?? a.teachingLoadId)
+        const roster = studentsByLoad.get(loadId) || []
+        const missing = roster.filter((st) => !submittedIds.has(Number(st.studentID)))
+        if (missing.length > 0) {
+          overdueMissingCount += missing.length
+          overdueRows.push({
+            activityID: a.classActivityID ?? a.id,
+            title: a.title || 'Untitled activity',
+            deadline: a.deadline,
+            missingCount: missing.length,
+          })
+        }
+      }
+    })
+
+    const failingStudents = [...failingCounts.entries()]
+      .map(([studentID, failCount]) => ({
+        studentID,
+        failCount,
+        name: studentNameById.get(studentID) || `Student #${studentID}`,
+      }))
+      .sort((a, b) => b.failCount - a.failCount)
+
+    return {
+      assignments,
+      activities,
+      studentsHandled: studentNameById.size,
+      gradedCount,
+      awaitingCount,
+      overdueMissingCount,
+      failingStudents,
+      overdueRows: overdueRows.sort((a, b) => new Date(a.deadline) - new Date(b.deadline)),
+    }
+  }, [roleScope.assignments, roleScope.activities])
+
+  if (isStudent) {
+    const me = students[0] || null
+    return (
+      <DirectoryFetchBarrier>
+        <div className="dashboard">
+          <header className="dashboard-masthead">
+            <div className="dashboard-masthead-top">
+              <div className="dashboard-masthead-copy">
+                <div className="dashboard-masthead-badge">
+                  <span className="dashboard-masthead-badge-icon"><LayoutDashboard size={18} strokeWidth={2.25} /></span>
+                  <span className="dashboard-masthead-badge-text">Student · Personal overview</span>
+                </div>
+                <h2 className="dashboard-masthead-title">My dashboard</h2>
+                <p className="dashboard-masthead-sub">
+                  Your classes, submissions, and grades only.
+                  {me ? ` (${me.lastName}, ${me.firstName})` : ''}
+                </p>
+              </div>
+            </div>
+            <div className="dashboard-masthead-stats">
+              <Link to={lmsPath(base, '/classes')} className="dash-stat-tile dash-stat-tile--link">
+                <span className="dash-stat-tile-icon"><BookOpen size={20} strokeWidth={2} /></span>
+                <span className="dash-stat-tile-copy">
+                  <span className="dash-stat-tile-value">{studentSummary.assignments.length}</span>
+                  <span className="dash-stat-tile-label">My classes</span>
+                </span>
+              </Link>
+              <Link to={lmsPath(base, '/activities')} className="dash-stat-tile dash-stat-tile--link">
+                <span className="dash-stat-tile-icon"><Users size={20} strokeWidth={2} /></span>
+                <span className="dash-stat-tile-copy">
+                  <span className="dash-stat-tile-value">{studentSummary.pending.length}</span>
+                  <span className="dash-stat-tile-label">Pending activities</span>
+                </span>
+              </Link>
+              <div className="dash-stat-tile">
+                <span className="dash-stat-tile-icon"><AlertTriangle size={20} strokeWidth={2} /></span>
+                <span className="dash-stat-tile-copy">
+                  <span className="dash-stat-tile-value">{studentSummary.overdue.length}</span>
+                  <span className="dash-stat-tile-label">Overdue</span>
+                </span>
+              </div>
+              <div className="dash-stat-tile">
+                <span className="dash-stat-tile-icon"><GraduationCap size={20} strokeWidth={2} /></span>
+                <span className="dash-stat-tile-copy">
+                  <span className="dash-stat-tile-value">{studentSummary.avgPct != null ? `${studentSummary.avgPct}%` : '—'}</span>
+                  <span className="dash-stat-tile-label">Average (graded)</span>
+                </span>
+              </div>
+            </div>
+          </header>
+
+          <div className="dash-widgets dash-widgets--two">
+            <div className="dash-recent">
+              <div className="dash-recent-header">
+                <AlertTriangle size={16} strokeWidth={2} />
+                <h3>Overdue activities</h3>
+              </div>
+              {roleScope.status === 'loading' ? <p className="muted" style={{ padding: '1rem 1.25rem' }}>Loading…</p> : null}
+              {roleScope.status === 'error' ? <p className="muted" style={{ padding: '1rem 1.25rem' }}>Could not load your activity summary.</p> : null}
+              {roleScope.status !== 'loading' && roleScope.status !== 'error' && (
+                studentSummary.overdue.length > 0 ? studentSummary.overdue.slice(0, 6).map((a) => (
+                  <Link key={a.id ?? a.classActivityID} to={lmsPath(base, '/activities')} className="dash-recent-row">
+                    <div className="dash-recent-info">
+                      <div className="dash-recent-name">{a.title || 'Untitled activity'}</div>
+                      <div className="dash-recent-meta">Deadline: {a.deadline ? new Date(a.deadline).toLocaleString() : '—'}</div>
+                    </div>
+                    <ChevronRight size={16} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
+                  </Link>
+                )) : <p className="muted" style={{ padding: '1rem 1.25rem' }}>No overdue activities.</p>
+              )}
+            </div>
+
+            <div className="dash-recent">
+              <div className="dash-recent-header">
+                <TrendingUp size={16} strokeWidth={2} />
+                <h3>Recently graded</h3>
+              </div>
+              {studentSummary.graded.length > 0 ? studentSummary.graded.slice(0, 6).map((a) => {
+                const max = Number(a.maxScore) > 0 ? Number(a.maxScore) : 100
+                const score = Number(a?.mySubmission?.score)
+                const pct = Number.isFinite(score) ? Math.round((score / max) * 10000) / 100 : null
+                return (
+                  <Link key={a.id ?? a.classActivityID} to={lmsPath(base, '/activities')} className="dash-recent-row">
+                    <div className="dash-recent-info">
+                      <div className="dash-recent-name">{a.title || 'Untitled activity'}</div>
+                      <div className="dash-recent-meta">
+                        Score: {Number.isFinite(score) ? score : '—'} / {max}
+                        {pct != null ? ` (${pct}%)` : ''}
+                      </div>
+                    </div>
+                    <ChevronRight size={16} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
+                  </Link>
+                )
+              }) : <p className="muted" style={{ padding: '1rem 1.25rem' }}>No graded activities yet.</p>}
+            </div>
+          </div>
+        </div>
+      </DirectoryFetchBarrier>
+    )
+  }
+
+  if (isFaculty) {
+    return (
+      <DirectoryFetchBarrier>
+        <div className="dashboard">
+          <header className="dashboard-masthead">
+            <div className="dashboard-masthead-top">
+              <div className="dashboard-masthead-copy">
+                <div className="dashboard-masthead-badge">
+                  <span className="dashboard-masthead-badge-icon"><LayoutDashboard size={18} strokeWidth={2.25} /></span>
+                  <span className="dashboard-masthead-badge-text">Faculty · Teaching overview</span>
+                </div>
+                <h2 className="dashboard-masthead-title">My teaching dashboard</h2>
+                <p className="dashboard-masthead-sub">Only your classes, sections, and students are included.</p>
+              </div>
+            </div>
+            <div className="dashboard-masthead-stats">
+              <Link to={lmsPath(base, '/my-classes')} className="dash-stat-tile dash-stat-tile--link">
+                <span className="dash-stat-tile-icon"><BookOpen size={20} strokeWidth={2} /></span>
+                <span className="dash-stat-tile-copy">
+                  <span className="dash-stat-tile-value">{facultySummary.assignments.length}</span>
+                  <span className="dash-stat-tile-label">My classes</span>
+                </span>
+              </Link>
+              <Link to={lmsPath(base, '/students')} className="dash-stat-tile dash-stat-tile--link">
+                <span className="dash-stat-tile-icon"><Users size={20} strokeWidth={2} /></span>
+                <span className="dash-stat-tile-copy">
+                  <span className="dash-stat-tile-value">{facultySummary.studentsHandled}</span>
+                  <span className="dash-stat-tile-label">Students handled</span>
+                </span>
+              </Link>
+              <div className="dash-stat-tile">
+                <span className="dash-stat-tile-icon"><AlertTriangle size={20} strokeWidth={2} /></span>
+                <span className="dash-stat-tile-copy">
+                  <span className="dash-stat-tile-value">{facultySummary.awaitingCount}</span>
+                  <span className="dash-stat-tile-label">Awaiting grading</span>
+                </span>
+              </div>
+              <div className="dash-stat-tile">
+                <span className="dash-stat-tile-icon"><UserX size={20} strokeWidth={2} /></span>
+                <span className="dash-stat-tile-copy">
+                  <span className="dash-stat-tile-value">{facultySummary.failingStudents.length}</span>
+                  <span className="dash-stat-tile-label">Students below 75%</span>
+                </span>
+              </div>
+            </div>
+          </header>
+
+          <div className="dash-widgets dash-widgets--two">
+            <div className="dash-recent">
+              <div className="dash-recent-header">
+                <UserX size={16} strokeWidth={2} />
+                <h3>At-risk students (failing grades)</h3>
+              </div>
+              {roleScope.status === 'loading' ? <p className="muted" style={{ padding: '1rem 1.25rem' }}>Loading…</p> : null}
+              {roleScope.status === 'error' ? <p className="muted" style={{ padding: '1rem 1.25rem' }}>Could not load your class analytics.</p> : null}
+              {roleScope.status !== 'loading' && roleScope.status !== 'error' && (
+                facultySummary.failingStudents.length > 0 ? facultySummary.failingStudents.slice(0, 8).map((r) => (
+                  <Link key={r.studentID} to={lmsPath(base, `/students/${r.studentID}`)} className="dash-recent-row">
+                    <div className="dash-recent-info">
+                      <div className="dash-recent-name">{r.name}</div>
+                      <div className="dash-recent-meta">{r.failCount} failing graded item(s)</div>
+                    </div>
+                    <ChevronRight size={16} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
+                  </Link>
+                )) : <p className="muted" style={{ padding: '1rem 1.25rem' }}>No failing graded records found.</p>
+              )}
+            </div>
+
+            <div className="dash-recent">
+              <div className="dash-recent-header">
+                <AlertTriangle size={16} strokeWidth={2} />
+                <h3>Past-deadline, not submitted</h3>
+              </div>
+              {roleScope.status !== 'loading' && roleScope.status !== 'error' && facultySummary.overdueRows.length > 0 && (
+                <div style={{ padding: '0.75rem 1.25rem', color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
+                  Total missing submissions: <strong>{facultySummary.overdueMissingCount}</strong>
+                </div>
+              )}
+              {roleScope.status !== 'loading' && roleScope.status !== 'error' && (
+                facultySummary.overdueRows.length > 0 ? facultySummary.overdueRows.slice(0, 8).map((row) => (
+                  <Link key={row.activityID} to={lmsPath(base, '/my-classes')} className="dash-recent-row">
+                    <div className="dash-recent-info">
+                      <div className="dash-recent-name">{row.title}</div>
+                      <div className="dash-recent-meta">
+                        {row.missingCount} not submitted · Deadline {row.deadline ? new Date(row.deadline).toLocaleString() : '—'}
+                      </div>
+                    </div>
+                    <ChevronRight size={16} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
+                  </Link>
+                )) : <p className="muted" style={{ padding: '1rem 1.25rem' }}>No overdue missing submissions.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      </DirectoryFetchBarrier>
+    )
+  }
+
+  if (!isAdmin) return null
 
   return (
     <DirectoryFetchBarrier>
