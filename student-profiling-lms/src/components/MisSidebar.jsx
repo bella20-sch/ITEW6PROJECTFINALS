@@ -13,6 +13,9 @@ import {
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 
+const FALLBACK_LOGO_URL =
+  'https://upload.wikimedia.org/wikipedia/en/thumb/e/ef/Pamantasan_ng_Cabuyao_logo.svg/1200px-Pamantasan_ng_Cabuyao_logo.svg.png'
+
 const misNavItems = [
   { path: '/mis', end: true, icon: LayoutDashboard, label: 'MIS dashboard' },
   { path: '/mis/provision', end: false, icon: UserPlus, label: 'Account provisioning' },
@@ -50,8 +53,7 @@ export default function MisSidebar({ open, onClose, collapsed }) {
             alt="CCS Logo"
             className="sidebar-logo-image"
             onError={(e) => {
-              e.target.src =
-                'https://upload.wikimedia.org/wikipedia/en/thumb/e/ef/Pamantasan_ng_Cabuyao_logo.svg/1200px-Pamantasan_ng_Cabuyao_logo.svg.png'
+              e.target.src = FALLBACK_LOGO_URL
               e.target.onError = null
             }}
           />

@@ -6,6 +6,9 @@ import { useToast } from '../context/ToastContext'
 import { getTheme, setTheme } from '../lib/theme'
 import { homePathForRole } from '../lib/lmsPaths'
 
+const FALLBACK_LOGO_URL =
+  'https://upload.wikimedia.org/wikipedia/en/thumb/e/ef/Pamantasan_ng_Cabuyao_logo.svg/1200px-Pamantasan_ng_Cabuyao_logo.svg.png'
+
 export default function Login() {
   const { login, ready, isAuthenticated, currentUser } = useAuth()
   const { showToast } = useToast()
@@ -101,7 +104,14 @@ export default function Login() {
         <span className="auth-left-ring auth-left-ring--d" aria-hidden />
         <span className="auth-kicker">CCS Administration</span>
         <div className="auth-left-logo">
-          <img src="/logo.png" alt="CCS Logo" />
+          <img
+            src="/logo.png"
+            alt="CCS Logo"
+            onError={(e) => {
+              e.target.src = FALLBACK_LOGO_URL
+              e.target.onError = null
+            }}
+          />
         </div>
         <h1>Student Profiling Portal</h1>
         <p className="auth-description">

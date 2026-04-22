@@ -4,6 +4,9 @@ import { LayoutDashboard, Users, BookOpen, UserCircle, FileBarChart, X, Clipboar
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 
+const FALLBACK_LOGO_URL =
+  'https://upload.wikimedia.org/wikipedia/en/thumb/e/ef/Pamantasan_ng_Cabuyao_logo.svg/1200px-Pamantasan_ng_Cabuyao_logo.svg.png'
+
 const navItems = [
   { path: '', icon: LayoutDashboard, label: 'Dashboard' },
   { path: 'students', icon: Users, label: 'Students' },
@@ -62,7 +65,15 @@ export default function Sidebar({ open, onClose, collapsed }) {
           <X size={24} />
         </button>
       <div className="sidebar-brand">
-        <img src="/logo.png" alt="CCS Logo" className="sidebar-logo-image" onError={(e) => { e.target.src = 'https://upload.wikimedia.org/wikipedia/en/thumb/e/ef/Pamantasan_ng_Cabuyao_logo.svg/1200px-Pamantasan_ng_Cabuyao_logo.svg.png'; e.target.onError = null; }} />
+        <img
+          src="/logo.png"
+          alt="CCS Logo"
+          className="sidebar-logo-image"
+          onError={(e) => {
+            e.target.src = FALLBACK_LOGO_URL
+            e.target.onError = null
+          }}
+        />
         <div className="sidebar-brand-text">
           <span className={portalTitleClass}>{portalTitle}</span>
           {(currentUser?.role === 'Faculty' || currentUser?.role === 'Student') && (
