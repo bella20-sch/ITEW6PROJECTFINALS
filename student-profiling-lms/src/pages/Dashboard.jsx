@@ -290,18 +290,36 @@ export default function Dashboard() {
     return (
       <DirectoryFetchBarrier>
         <div className="dashboard">
-          <header className="dashboard-masthead">
+          <header className="dashboard-masthead" aria-labelledby="student-dashboard-masthead-title">
+            <div className="dashboard-masthead-glow" aria-hidden="true" />
+            <div className="dashboard-masthead-grid" aria-hidden="true" />
             <div className="dashboard-masthead-top">
               <div className="dashboard-masthead-copy">
                 <div className="dashboard-masthead-badge">
-                  <span className="dashboard-masthead-badge-icon"><LayoutDashboard size={18} strokeWidth={2.25} /></span>
+                  <span className="dashboard-masthead-badge-icon"><LayoutDashboard size={18} strokeWidth={2.25} aria-hidden /></span>
                   <span className="dashboard-masthead-badge-text">Student · Personal overview</span>
                 </div>
-                <h2 className="dashboard-masthead-title">My dashboard</h2>
+                <h2 id="student-dashboard-masthead-title" className="dashboard-masthead-title">My dashboard</h2>
                 <p className="dashboard-masthead-sub">
                   Your classes, submissions, and grades only.
                   {me ? ` (${me.lastName}, ${me.firstName})` : ''}
                 </p>
+                <ul className="dashboard-masthead-tags">
+                  <li><Sparkles size={12} strokeWidth={2} aria-hidden /> {studentSummary.assignments.length} class{studentSummary.assignments.length === 1 ? '' : 'es'}</li>
+                  <li><BookOpen size={12} strokeWidth={2} aria-hidden /> {studentSummary.activities.length} tracked activities</li>
+                  <li><GraduationCap size={12} strokeWidth={2} aria-hidden /> {studentSummary.graded.length} graded</li>
+                </ul>
+              </div>
+              <div className="dashboard-masthead-visual" aria-hidden="true">
+                <div className="dashboard-masthead-orbit">
+                  <span className="dashboard-masthead-orbit-ring" />
+                  <span className="dashboard-masthead-orbit-dot dashboard-masthead-orbit-dot--a" />
+                  <span className="dashboard-masthead-orbit-dot dashboard-masthead-orbit-dot--b" />
+                  <span className="dashboard-masthead-orbit-dot dashboard-masthead-orbit-dot--c" />
+                  <span className="dashboard-masthead-orbit-center">
+                    <GraduationCap size={26} strokeWidth={1.85} />
+                  </span>
+                </div>
               </div>
             </div>
             <div className="dashboard-masthead-stats">
@@ -390,15 +408,35 @@ export default function Dashboard() {
     return (
       <DirectoryFetchBarrier>
         <div className="dashboard">
-          <header className="dashboard-masthead">
+          <header className="dashboard-masthead" aria-labelledby="faculty-dashboard-masthead-title">
+            <div className="dashboard-masthead-glow" aria-hidden="true" />
+            <div className="dashboard-masthead-grid" aria-hidden="true" />
             <div className="dashboard-masthead-top">
               <div className="dashboard-masthead-copy">
                 <div className="dashboard-masthead-badge">
-                  <span className="dashboard-masthead-badge-icon"><LayoutDashboard size={18} strokeWidth={2.25} /></span>
+                  <span className="dashboard-masthead-badge-icon"><LayoutDashboard size={18} strokeWidth={2.25} aria-hidden /></span>
                   <span className="dashboard-masthead-badge-text">Faculty · Teaching overview</span>
                 </div>
-                <h2 className="dashboard-masthead-title">My teaching dashboard</h2>
-                <p className="dashboard-masthead-sub">Only your classes, sections, and students are included.</p>
+                <h2 id="faculty-dashboard-masthead-title" className="dashboard-masthead-title">My teaching dashboard</h2>
+                <p className="dashboard-masthead-sub">
+                  Track the classes, sections, and students assigned to you, then quickly spot submissions that still need grading or learners who may need intervention.
+                </p>
+                <ul className="dashboard-masthead-tags">
+                  <li><Sparkles size={12} strokeWidth={2} aria-hidden /> {facultySummary.assignments.length} class{facultySummary.assignments.length === 1 ? '' : 'es'}</li>
+                  <li><Users size={12} strokeWidth={2} aria-hidden /> {facultySummary.studentsHandled} students handled</li>
+                  <li><BookOpen size={12} strokeWidth={2} aria-hidden /> {facultySummary.activities.length} activities tracked</li>
+                </ul>
+              </div>
+              <div className="dashboard-masthead-visual" aria-hidden="true">
+                <div className="dashboard-masthead-orbit">
+                  <span className="dashboard-masthead-orbit-ring" />
+                  <span className="dashboard-masthead-orbit-dot dashboard-masthead-orbit-dot--a" />
+                  <span className="dashboard-masthead-orbit-dot dashboard-masthead-orbit-dot--b" />
+                  <span className="dashboard-masthead-orbit-dot dashboard-masthead-orbit-dot--c" />
+                  <span className="dashboard-masthead-orbit-center">
+                    <GraduationCap size={26} strokeWidth={1.85} />
+                  </span>
+                </div>
               </div>
             </div>
             <div className="dashboard-masthead-stats">
@@ -407,6 +445,7 @@ export default function Dashboard() {
                 <span className="dash-stat-tile-copy">
                   <span className="dash-stat-tile-value">{facultySummary.assignments.length}</span>
                   <span className="dash-stat-tile-label">My classes</span>
+                  <span className="dash-stat-tile-hint">Sections currently assigned</span>
                 </span>
               </Link>
               <Link to={lmsPath(base, '/students')} className="dash-stat-tile dash-stat-tile--link">
@@ -414,6 +453,7 @@ export default function Dashboard() {
                 <span className="dash-stat-tile-copy">
                   <span className="dash-stat-tile-value">{facultySummary.studentsHandled}</span>
                   <span className="dash-stat-tile-label">Students handled</span>
+                  <span className="dash-stat-tile-hint">Unique learners in your loads</span>
                 </span>
               </Link>
               <div className="dash-stat-tile">
@@ -421,6 +461,7 @@ export default function Dashboard() {
                 <span className="dash-stat-tile-copy">
                   <span className="dash-stat-tile-value">{facultySummary.awaitingCount}</span>
                   <span className="dash-stat-tile-label">Awaiting grading</span>
+                  <span className="dash-stat-tile-hint">Submitted but not graded yet</span>
                 </span>
               </div>
               <div className="dash-stat-tile">
@@ -428,6 +469,7 @@ export default function Dashboard() {
                 <span className="dash-stat-tile-copy">
                   <span className="dash-stat-tile-value">{facultySummary.failingStudents.length}</span>
                   <span className="dash-stat-tile-label">Students below {FAILING_PERCENT_THRESHOLD}%</span>
+                  <span className="dash-stat-tile-hint">Needs attention or follow-up</span>
                 </span>
               </div>
             </div>

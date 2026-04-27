@@ -6,8 +6,9 @@ import { apiFetch } from '../lib/api'
 import { useLmsBase, lmsPath } from '../lib/lmsPaths'
 import ContentLoadingSkeleton from '../components/ContentLoadingSkeleton'
 import DirectoryLoadErrorPanel from '../components/DirectoryLoadErrorPanel'
-import { ClipboardList, Sparkles, Send, CheckCircle2 } from 'lucide-react'
+import { ClipboardList, Sparkles, Send, CheckCircle2, GraduationCap } from 'lucide-react'
 import ConfirmModal from '../components/ConfirmModal'
+import FilterDropdown from '../components/FilterDropdown'
 
 export default function StudentActivitiesHub() {
   const { token, currentUser } = useAuth()
@@ -132,6 +133,16 @@ export default function StudentActivitiesHub() {
               </li>
             </ul>
           </div>
+          <div className="students-hero-visual" aria-hidden="true">
+            <div className="students-hero-orbit">
+              <span className="students-hero-orbit-ring" />
+              <span className="students-hero-orbit-dot students-hero-orbit-dot--a" />
+              <span className="students-hero-orbit-dot students-hero-orbit-dot--b" />
+              <span className="students-hero-orbit-center">
+                <GraduationCap size={28} strokeWidth={1.85} />
+              </span>
+            </div>
+          </div>
         </div>
       </header>
 
@@ -145,7 +156,19 @@ export default function StudentActivitiesHub() {
         <p className="muted">No class enrollments yet.</p>
       ) : (
         <>
-          <nav className="student-hub-class-tabs faculty-class-tabs workspace-tabs" role="tablist" aria-label="Classes">
+          <div className="tabs-mobile-select" aria-label="Classes">
+            <FilterDropdown
+              ariaLabel="Classes"
+              value={String(activeTl)}
+              onChange={(v) => selectClass(v)}
+              placeholder="Select…"
+              options={enriched.map((cl) => ({
+                value: String(cl.key),
+                label: `${cl.subjectTitle || 'Subject'} · ${cl.tabLabel}`,
+              }))}
+            />
+          </div>
+          <nav className="student-hub-class-tabs faculty-class-tabs workspace-tabs tabs-desktop" role="tablist" aria-label="Classes">
             {enriched.map((cl) => (
               <button
                 key={cl.key}
@@ -168,6 +191,7 @@ export default function StudentActivitiesHub() {
               <div className="workspace-activity-stack">
                 {forClass.map((a) => {
                   const aid = a.id ?? a.classActivityID
+                  const postedAt = a.createdAt ? new Date(a.createdAt).toLocaleString() : null
                   return (
                     <article key={aid} className="workspace-activity-card">
                       <header className="workspace-activity-top">
@@ -178,6 +202,7 @@ export default function StudentActivitiesHub() {
                             {String(a.gradingPeriod || 'prelim')}
                           </p>
                           {a.description && <p className="workspace-activity-desc">{a.description}</p>}
+                          {postedAt ? <p className="muted small">Posted {postedAt}</p> : null}
                           <p className="muted small">
                             Deadline: {a.deadline ? new Date(a.deadline).toLocaleString() : '—'}
                           </p>

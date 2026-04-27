@@ -5,6 +5,7 @@ import { useData } from '../context/DataContext'
 import { apiFetch } from '../lib/api'
 import { fetchStudentClassroomFallback, isNotFoundError } from '../lib/studentClassroomFallback'
 import { useLmsBase, lmsPath } from '../lib/lmsPaths'
+import FilterDropdown from '../components/FilterDropdown'
 import {
   ArrowLeft,
   FileText,
@@ -236,7 +237,21 @@ export default function StudentClassSection() {
         </div>
       ) : null}
 
-      <nav className="faculty-class-tabs workspace-tabs" role="tablist" aria-label="Class views">
+      <div className="tabs-mobile-select" aria-label="Class views">
+        <FilterDropdown
+          ariaLabel="Class views"
+          value={tab}
+          onChange={selectTab}
+          placeholder="Select…"
+          options={[
+            { value: 'activities', label: 'Activities' },
+            { value: 'grades', label: 'Grades' },
+            { value: 'period-totals', label: 'Period totals' },
+            { value: 'lessons', label: 'Lessons' },
+          ]}
+        />
+      </div>
+      <nav className="faculty-class-tabs workspace-tabs tabs-desktop" role="tablist" aria-label="Class views">
         {[
           { id: 'activities', label: 'Activities', Icon: ClipboardList },
           { id: 'grades', label: 'Grades', Icon: BarChart3 },
@@ -477,18 +492,30 @@ export default function StudentClassSection() {
             <p className="muted">No lessons posted yet.</p>
           ) : (
             <ul className="faculty-class-lesson-list">
-              {materials.map((m) => (
-                <li key={m.sectionMaterialID ?? m.id} className="faculty-class-lesson-card">
-                  <h3>{m.title}</h3>
-                  {m.content ? <p className="faculty-class-lesson-body">{m.content}</p> : null}
-                  {m.link ? (
-                    <a href={m.link} target="_blank" rel="noreferrer" className="faculty-class-lesson-link">
-                      <ExternalLink size={14} aria-hidden />
-                      {m.link}
-                    </a>
-                  ) : null}
-                </li>
-              ))}
+              {materials.map((m) => {
+                const posted = m.postedAt ? new Date(m.postedAt).toLocaleString() : null
+                return (
+                  <li key={m.sectionMaterialID ?? m.id} className="faculty-class-lesson-card">
+                    <div className="lesson-post-head">
+                      <div className="lesson-post-title">
+                        <FileText size={18} aria-hidden />
+                        <h3>{m.title}</h3>
+                      </div>
+                      <div className="lesson-post-meta muted">
+                        {posted ? <span>{posted}</span> : null}
+                        {m.facultyName ? <span>{m.facultyName}</span> : null}
+                      </div>
+                    </div>
+                    {m.content ? <p className="faculty-class-lesson-body">{m.content}</p> : null}
+                    {m.link ? (
+                      <a href={m.link} target="_blank" rel="noreferrer" className="faculty-class-lesson-link">
+                        <ExternalLink size={14} aria-hidden />
+                        {m.link}
+                      </a>
+                    ) : null}
+                  </li>
+                )
+              })}
             </ul>
           )}
         </section>

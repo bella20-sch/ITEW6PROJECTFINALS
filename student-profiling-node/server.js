@@ -50,6 +50,12 @@ const omitPassword = (row) => {
     return rest;
 };
 
+const formatFacultyName = (fac) => {
+    if (!fac) return '';
+    const full = `${fac.lastName || ''}, ${fac.firstName || ''}`.replace(/^,\s*/, '').trim();
+    return full || `Faculty #${Number(fac.facultyID) || ''}`.trim();
+};
+
 // Fake Middleware for Token Checking 
 const authenticate = (req, res, next) => {
     const authHeader = req.headers.authorization;
@@ -1043,7 +1049,13 @@ app.get('/api/me/materials', authenticate, (req, res) => {
     const role = req.user?.role;
     const uid = Number(req.user?.id);
     const students = db.students || [];
-    const mapMaterial = (m, tl) => ({
+    const mapMaterial = (m, tl) => {
+        const sourceFacultyId = Number(m.facultyID) || Number(tl?.facultyID) || null;
+        const fac = sourceFacultyId != null
+            ? (db.faculty || []).find((f) => Number(f.facultyID) === Number(sourceFacultyId))
+            : null;
+        const facultyName = formatFacultyName(fac) || (sourceFacultyId != null ? `Faculty #${sourceFacultyId}` : 'Faculty');
+        return ({
         ...m,
         id: m.sectionMaterialID,
         teachingLoadId: m.teachingLoadID,
@@ -1051,7 +1063,10 @@ app.get('/api/me/materials', authenticate, (req, res) => {
         subjectTitle: tl?.subjectTitle || '',
         courseID: m.courseID,
         section: m.section,
-    });
+        postedAt: m.postedAt || m.createdAt || null,
+        facultyName,
+        });
+    };
     if (role === 'Faculty') {
         const loads = db.teachingLoads || [];
         const list = (db.sectionMaterials || []).filter((m) => Number(m.facultyID) === uid);
@@ -1218,7 +1233,20 @@ app.get('/api/faculty/teaching-loads/:id/classroom', authenticate, requireFacult
     const tl = chk.tl;
     const students = (db.students || []).filter((s) => studentMatchesLoad(s, tl)).map(omitPassword);
     const crs = db.courses.find((c) => Number(c.courseID) === Number(tl.courseID));
-    const materials = (db.sectionMaterials || []).filter((m) => Number(m.teachingLoadID) === Number(tl.teachingLoadID));
+    const materials = (db.sectionMaterials || [])
+        .filter((m) => Number(m.teachingLoadID) === Number(tl.teachingLoadID))
+        .map((m) => {
+            const sourceFacultyId = Number(m.facultyID) || Number(tl.facultyID) || null;
+            const fac = sourceFacultyId != null
+                ? (db.faculty || []).find((f) => Number(f.facultyID) === Number(sourceFacultyId))
+                : null;
+            const facultyName = formatFacultyName(fac) || (sourceFacultyId != null ? `Faculty #${sourceFacultyId}` : 'Faculty');
+            return {
+                ...m,
+                postedAt: m.postedAt || m.createdAt || null,
+                facultyName,
+            };
+        });
     const subsAll = db.classActivitySubmissions || [];
     const activities = (db.classActivities || [])
         .filter((a) => Number(a.teachingLoadID) === Number(tl.teachingLoadID))
@@ -1264,7 +1292,20 @@ app.get('/api/student/teaching-loads/:id/classroom', authenticate, requireStuden
     const tl = chk.tl;
     const sid = Number(req.user.id);
     const crs = db.courses.find((c) => Number(c.courseID) === Number(tl.courseID));
-    const materials = (db.sectionMaterials || []).filter((m) => Number(m.teachingLoadID) === Number(tl.teachingLoadID));
+    const materials = (db.sectionMaterials || [])
+        .filter((m) => Number(m.teachingLoadID) === Number(tl.teachingLoadID))
+        .map((m) => {
+            const sourceFacultyId = Number(m.facultyID) || Number(tl.facultyID) || null;
+            const fac = sourceFacultyId != null
+                ? (db.faculty || []).find((f) => Number(f.facultyID) === Number(sourceFacultyId))
+                : null;
+            const facultyName = formatFacultyName(fac) || (sourceFacultyId != null ? `Faculty #${sourceFacultyId}` : 'Faculty');
+            return {
+                ...m,
+                postedAt: m.postedAt || m.createdAt || null,
+                facultyName,
+            };
+        });
     const subsAll = db.classActivitySubmissions || [];
     const activities = (db.classActivities || [])
         .filter((a) => Number(a.teachingLoadID) === Number(tl.teachingLoadID))
