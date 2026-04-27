@@ -2360,7 +2360,7 @@ a {
 .auth-shell {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: minmax(320px, 1.08fr) minmax(340px, 0.92fr);
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
   background: var(--color-bg-primary);
 }
 
@@ -2370,8 +2370,9 @@ a {
   background-image: linear-gradient(135deg, #f97316 0%, #ea580c 52%, #9a3412 100%);
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
+  text-align: center;
   color: white;
   padding: clamp(2.25rem, 6vw, 4.5rem);
   gap: 1rem;
@@ -2534,13 +2535,15 @@ a {
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
   box-shadow: 0 14px 30px -14px rgba(15, 23, 42, 0.5);
 }
 
 .auth-left-logo img {
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;
+  border-radius: 50%;
 }
 
 .auth-left h1 {
