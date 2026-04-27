@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { useData } from '../context/DataContext'
 import { apiFetch } from '../lib/api'
 import { useLmsBase, lmsPath } from '../lib/lmsPaths'
+import FilterDropdown from '../components/FilterDropdown'
 import ContentLoadingSkeleton from '../components/ContentLoadingSkeleton'
 import DirectoryLoadErrorPanel from '../components/DirectoryLoadErrorPanel'
 import ConfirmModal from '../components/ConfirmModal'
@@ -65,6 +66,7 @@ export default function Workspace() {
   const [facultyPublishConfirm, setFacultyPublishConfirm] = useState(null) // null | 'activity' | 'material'
   const [gradeDraft, setGradeDraft] = useState({})
   const [workspaceTab, setWorkspaceTab] = useState('classes')
+  const [activeFacultyTl, setActiveFacultyTl] = useState('')
 
   const isFaculty = currentUser?.role === 'Faculty'
   const isStudent = currentUser?.role === 'Student'
@@ -147,6 +149,7 @@ export default function Workspace() {
     const first = String(assignments[0].teachingLoadId ?? assignments[0].id)
     setActForm((p) => (p.teachingLoadId ? p : { ...p, teachingLoadId: first }))
     setMatForm((p) => (p.teachingLoadId ? p : { ...p, teachingLoadId: first }))
+    setActiveFacultyTl((p) => (p ? p : first))
   }, [assignments])
 
   useEffect(() => {
@@ -169,6 +172,12 @@ export default function Workspace() {
       })),
     [assignments, courseCode],
   )
+
+  const filteredFacultyActivities = useMemo(() => {
+    if (!isFaculty) return activities
+    if (!activeFacultyTl) return activities
+    return activities.filter((a) => String(a.teachingLoadID) === String(activeFacultyTl))
+  }, [activities, isFaculty, activeFacultyTl])
 
   if (directoryStatus === 'loading' || directoryStatus === 'idle') {
     return <ContentLoadingSkeleton title="Loading directory data…" />
@@ -240,7 +249,16 @@ export default function Workspace() {
         </div>
       )}
 
-      <nav className="faculty-class-tabs workspace-tabs" role="tablist" aria-label="Workspace sections">
+      <div className="tabs-mobile-select" aria-label="Workspace sections">
+        <FilterDropdown
+          ariaLabel="Workspace sections"
+          value={workspaceTab}
+          onChange={setWorkspaceTab}
+          placeholder="Select…"
+          options={workspaceTabs.map((t) => ({ value: t.id, label: t.label }))}
+        />
+      </div>
+      <nav className="faculty-class-tabs workspace-tabs tabs-desktop" role="tablist" aria-label="Workspace sections">
         {workspaceTabs.map(({ id, label, Icon }) => (
           <button
             key={id}
@@ -558,9 +576,23 @@ export default function Workspace() {
           <ClipboardList size={20} strokeWidth={2} aria-hidden />
           Activities & submissions
         </h3>
-        {!activities.length && <p className="muted workspace-empty">No class activities yet.</p>}
+        {isFaculty && assignments.length > 1 && (
+          <div className="workspace-filter-row">
+            <label className="muted">
+              Class
+              <select value={activeFacultyTl} onChange={(e) => setActiveFacultyTl(e.target.value)}>
+                {teachingOptions.map((o) => (
+                  <option key={`flt-${o.value}`} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        )}
+        {!filteredFacultyActivities.length && <p className="muted workspace-empty">No class activities yet.</p>}
         <div className="workspace-activity-stack">
-          {activities.map((a) => (
+          {filteredFacultyActivities.map((a) => (
             <article key={a.id} className="workspace-activity-card">
               <header className="workspace-activity-top">
                 <div>

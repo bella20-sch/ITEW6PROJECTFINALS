@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { Search, ChevronRight, Plus, Users, UserCheck, BookOpen, Sparkles, GraduationCap } from 'lucide-react'
 import { useData } from '../context/DataContext'
@@ -29,6 +29,8 @@ export default function Students() {
   const [statusFilter, setStatusFilter] = useState('')
   const [typeFilter, setTypeFilter] = useState('')
   const [sortOrder, setSortOrder] = useState('az') // az | za
+  const [page, setPage] = useState(1)
+  const PAGE_SIZE = 25
 
   const facultyClassOptions = useMemo(() => {
     if (!isFaculty) return []
@@ -96,6 +98,33 @@ export default function Students() {
 
     return list
   }, [students, search, isFaculty, classFilter, courseFilter, yearFilter, statusFilter, typeFilter, sortOrder])
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const currentPage = Math.min(page, totalPages)
+  const paginatedStudents = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE
+    return filtered.slice(start, start + PAGE_SIZE)
+  }, [filtered, currentPage])
+  const [pageInput, setPageInput] = useState('1')
+
+  const clearFilters = () => {
+    setSearch('')
+    setCourseFilter('')
+    setClassFilter('')
+    setYearFilter('')
+    setStatusFilter('')
+    setTypeFilter('')
+    setSortOrder('az')
+    setPage(1)
+  }
+
+  useEffect(() => {
+    setPage(1)
+  }, [search, classFilter, courseFilter, yearFilter, statusFilter, typeFilter, sortOrder])
+
+  useEffect(() => {
+    setPageInput(String(currentPage))
+  }, [currentPage])
 
   const enrolledCount = students.filter((s) => s.enrollmentStatus === 'Enrolled').length
 
@@ -233,11 +262,17 @@ export default function Students() {
               { value: 'za', label: 'Z → A (Last Name)' },
             ]}
           />
+          <button type="button" className="btn btn-outline" onClick={clearFilters}>
+            Clear filters
+          </button>
+        </div>
+        <div className="students-results-meta" aria-live="polite">
+          Showing <strong>{filtered.length}</strong> result{filtered.length === 1 ? '' : 's'}
         </div>
       </div>
 
       <div className="student-list" role="region" aria-labelledby="students-hero-title">
-        {filtered.map(student => {
+        {paginatedStudents.map(student => {
           const course = courses.find(c => c.courseID === student.courseID)
           return (
             <Link key={student.studentID} to={lmsPath(base, `/students/${student.studentID}`)} className="student-card">
@@ -267,6 +302,55 @@ export default function Students() {
       {filtered.length === 0 && (
         <div className="empty-state">
           <p>No students match your filters.</p>
+        </div>
+      )}
+      {filtered.length > 0 && (
+        <div className="students-pagination">
+          <button
+            type="button"
+            className="btn btn-outline"
+            disabled={currentPage <= 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+          >
+            Previous
+          </button>
+          <span className="students-pagination-meta">
+            Page {currentPage} of {totalPages}
+          </span>
+          <div className="students-pagination-jump">
+            <label htmlFor="students-page-jump" className="students-pagination-jump-label">
+              Go to
+            </label>
+            <input
+              id="students-page-jump"
+              type="number"
+              min={1}
+              max={totalPages}
+              value={pageInput}
+              onChange={(e) => setPageInput(e.target.value)}
+              onBlur={() => {
+                const parsed = Number.parseInt(pageInput, 10)
+                const nextPage = Number.isFinite(parsed) ? Math.min(totalPages, Math.max(1, parsed)) : currentPage
+                setPage(nextPage)
+              }}
+              onKeyDown={(e) => {
+                if (e.key !== 'Enter') return
+                const parsed = Number.parseInt(pageInput, 10)
+                const nextPage = Number.isFinite(parsed) ? Math.min(totalPages, Math.max(1, parsed)) : currentPage
+                setPage(nextPage)
+              }}
+              className="students-pagination-input"
+              aria-label="Go to page number"
+            />
+          </div>
+          <button
+            type="button"
+            className="btn btn-outline"
+            disabled={currentPage >= totalPages}
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+          >
+            Next
+          </button>
         </div>
       )}
 
