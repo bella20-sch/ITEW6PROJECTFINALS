@@ -72,6 +72,7 @@ export default function Reports() {
   const [customError, setCustomError] = useState('')
   const [skillOptions, setSkillOptions] = useState([])
   const [skillOptionsLoading, setSkillOptionsLoading] = useState(false)
+  const [reportScopeIds, setReportScopeIds] = useState(null)
   const blockWheelNumberChange = (e) => e.currentTarget.blur()
 
   const queryStudents = async (filters) => {
@@ -81,6 +82,13 @@ export default function Reports() {
       body: filters,
     })
     return Array.isArray(res?.students) ? res.students : []
+  }
+
+  const runAllTemplateReports = async (scopeIds = null) => {
+    const scoped = Array.isArray(scopeIds) && scopeIds.length > 0
+      ? { studentIDs: scopeIds }
+      : {}
+    await Promise.all(reportTemplates.map((template) => runReport(template, scoped)))
   }
 
   const handleCustomQuery = async (e) => {
@@ -99,6 +107,8 @@ export default function Reports() {
       }
       const filtered = await queryStudents(filters)
       setCustomResult(filtered)
+      const scopedIds = filtered.map((s) => Number(s.studentID)).filter((x) => Number.isFinite(x))
+      setReportScopeIds(scopedIds)
     } catch (err) {
       setCustomError(err?.message || 'Failed to run query.')
     } finally {
@@ -106,11 +116,11 @@ export default function Reports() {
     }
   }
 
-  const runReport = async (template) => {
+  const runReport = async (template, extraFilters = {}) => {
     const key = template.id
     setResults(prev => ({ ...prev, [key]: { loading: true, error: '', students: [] } }))
     try {
-      const students = await queryStudents(template.filters || {})
+      const students = await queryStudents({ ...(template.filters || {}), ...(extraFilters || {}) })
       setResults(prev => ({ ...prev, [key]: { loading: false, error: '', students } }))
     } catch (err) {
       setResults(prev => ({ ...prev, [key]: { loading: false, error: err?.message || 'Failed.', students: [] } }))
@@ -118,8 +128,8 @@ export default function Reports() {
   }
 
   useEffect(() => {
-    if (token) reportTemplates.forEach(t => runReport(t))
-  }, [token])
+    if (token) runAllTemplateReports(reportScopeIds)
+  }, [token, reportScopeIds])
 
   useEffect(() => {
     if (!token) return
@@ -271,7 +281,19 @@ export default function Reports() {
                 {customLoading ? 'Searching…' : <><Search size={15} /> Run Query</>}
               </button>
               {customResult !== null && (
-                <button type="button" className="btn btn-outline" onClick={() => { setCustomResult(null); setCustomSkill(''); setCustomActivity(''); setCustomGpa(''); setCustomCourse(''); setCustomYear('') }}>
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={async () => {
+                    setCustomResult(null)
+                    setCustomSkill('')
+                    setCustomActivity('')
+                    setCustomGpa('')
+                    setCustomCourse('')
+                    setCustomYear('')
+                    setReportScopeIds(null)
+                  }}
+                >
                   Clear
                 </button>
               )}

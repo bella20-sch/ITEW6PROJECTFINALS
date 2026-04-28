@@ -604,6 +604,9 @@ const ReportsRepository = {
         const hasAffiliations = filters.hasAffiliations === true ? true : filters.hasAffiliations === false ? false : null;
         const hasViolations = filters.hasViolations === true ? true : filters.hasViolations === false ? false : null;
         const hasActivities = filters.hasActivities === true ? true : filters.hasActivities === false ? false : null;
+        const studentIdsFilter = Array.isArray(filters.studentIDs)
+            ? new Set(filters.studentIDs.map((x) => Number(x)).filter((x) => Number.isFinite(x)))
+            : null;
 
         return scopedStudents
             .map((student) => {
@@ -627,6 +630,7 @@ const ReportsRepository = {
             .filter((row) => {
                 if (courseID != null && Number(row.courseID) !== courseID) return false;
                 if (yearLevel != null && Number(row.yearLevel) !== yearLevel) return false;
+                if (studentIdsFilter && !studentIdsFilter.has(Number(row.studentID))) return false;
                 if (gpaMax != null && !(row.latestGpa != null && row.latestGpa <= gpaMax)) return false;
                 if (gpaMin != null && !(row.latestGpa != null && row.latestGpa >= gpaMin)) return false;
                 if (hasAffiliations != null) {
