@@ -586,6 +586,85 @@ const EligibilityRepository = {
     },
 };
 
+const ReportsRepository = {
+    queryStudents(db, user, rawFilters) {
+        if (!ELIGIBILITY_ROLES.has(user?.role)) return [];
+        const filters = rawFilters && typeof rawFilters === 'object' ? rawFilters : {};
+        const scopedStudents = EligibilityRepository.listStudentsForRole(db, user);
+        const toNum = (v) => {
+            const n = Number(v);
+            return Number.isFinite(n) ? n : null;
+        };
+        const skillQ = toNormText(filters.skill);
+        const activityQ = toNormText(filters.activity);
+        const gpaMax = toNum(filters.gpaMax);
+        const gpaMin = toNum(filters.gpaMin);
+        const courseID = toNum(filters.courseID);
+        const yearLevel = toNum(filters.yearLevel);
+        const hasAffiliations = filters.hasAffiliations === true ? true : filters.hasAffiliations === false ? false : null;
+        const hasViolations = filters.hasViolations === true ? true : filters.hasViolations === false ? false : null;
+        const hasActivities = filters.hasActivities === true ? true : filters.hasActivities === false ? false : null;
+
+        return scopedStudents
+            .map((student) => {
+                const ctx = EligibilityRepository.getStudentContext(db, student);
+                const latestAcademic = latestByDate(ctx.academicRows, ['schoolYear', 'createdAt', 'updatedAt']);
+                const latestGpa = toNum(latestAcademic?.gpa);
+                const skills = ctx.skillRows || [];
+                const activities = ctx.activityRows || [];
+                const affiliations = ctx.affiliationRows || [];
+                const violations = (db.violations || []).filter((v) => Number(v.studentID) === Number(student.studentID));
+                return {
+                    ...omitPassword(student),
+                    latestGpa,
+                    latestAcademicStanding: latestAcademic?.academicStanding || '',
+                    skills,
+                    activities,
+                    affiliations,
+                    violations,
+                };
+            })
+            .filter((row) => {
+                if (courseID != null && Number(row.courseID) !== courseID) return false;
+                if (yearLevel != null && Number(row.yearLevel) !== yearLevel) return false;
+                if (gpaMax != null && !(row.latestGpa != null && row.latestGpa <= gpaMax)) return false;
+                if (gpaMin != null && !(row.latestGpa != null && row.latestGpa >= gpaMin)) return false;
+                if (hasAffiliations != null) {
+                    const pass = (row.affiliations || []).length > 0;
+                    if (pass !== hasAffiliations) return false;
+                }
+                if (hasViolations != null) {
+                    const pass = (row.violations || []).length > 0;
+                    if (pass !== hasViolations) return false;
+                }
+                if (hasActivities != null) {
+                    const pass = (row.activities || []).length > 0;
+                    if (pass !== hasActivities) return false;
+                }
+                if (skillQ) {
+                    const hasSkill = (row.skills || []).some((s) => {
+                        const txt = `${s?.skillName || s?.name || ''} ${s?.category || ''} ${s?.description || ''}`.toLowerCase();
+                        return txt.includes(skillQ);
+                    });
+                    if (!hasSkill) return false;
+                }
+                if (activityQ) {
+                    const hasActivity = (row.activities || []).some((a) => {
+                        const txt = `${a?.activityName || ''} ${a?.activityType || ''} ${a?.description || ''}`.toLowerCase();
+                        return txt.includes(activityQ);
+                    });
+                    if (!hasActivity) return false;
+                }
+                return true;
+            })
+            .sort(
+                (a, b) =>
+                    String(a.lastName || '').localeCompare(String(b.lastName || '')) ||
+                    String(a.firstName || '').localeCompare(String(b.firstName || '')),
+            );
+    },
+};
+
 // --- AUTH ROUTE ---
 app.post('/api/auth/login', (req, res) => {
     const { email, password } = req.body;
@@ -686,6 +765,16 @@ app.get('/api/reports/smart-eligibility/options', authenticate, (req, res) => {
     const global = String(req.query.scope || '').toLowerCase() === 'global';
     const skillTags = EligibilityRepository.listSkillTagOptions(db, req.user, { global });
     return res.json({ skillTags });
+});
+
+app.post('/api/reports/query-students', authenticate, (req, res) => {
+    if (!ELIGIBILITY_ROLES.has(req.user?.role)) {
+        return res.status(403).json({ message: 'Only faculty or administrators can access this report.' });
+    }
+    const db = getDb();
+    const filters = req.body && typeof req.body === 'object' ? req.body : {};
+    const students = ReportsRepository.queryStudents(db, req.user, filters);
+    return res.json({ total: students.length, students });
 });
 
 /** Must be registered before `/api/meta/:type` or `dashboard-insights` is captured as :type and 404s. */
