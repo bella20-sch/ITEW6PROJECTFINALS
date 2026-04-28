@@ -6,53 +6,46 @@ import { useData } from '../context/DataContext'
 import DirectoryFetchBarrier from '../components/DirectoryFetchBarrier'
 import { apiFetch } from '../lib/api'
 
-const isDeansLister = (gpa) => { const g = Number(gpa); return !isNaN(g) && g >= 1.0 && g <= 2.50 }
-
-const fetchAllProfiles = async (token) => {
-  const list = await apiFetch('/api/students', { token })
-  return Promise.all((Array.isArray(list) ? list : []).map(s => apiFetch(`/api/students/${s.studentID}`, { token })))
-}
-
 const reportTemplates = [
   {
     id: 'basketball', title: 'Basketball Try-outs Qualified', description: 'Students with Basketball skill',
     icon: Trophy, color: '#f97316',
-    run: async (token) => Array.isArray(await apiFetch('/api/students?skill=Basketball', { token })) ? await apiFetch('/api/students?skill=Basketball', { token }) : [],
+    filters: { skill: 'Basketball' },
   },
   {
     id: 'programming', title: 'Programming Contest Qualified', description: 'Students with Programming skill',
     icon: Code, color: '#6366f1',
-    run: async (token) => { const l = await apiFetch('/api/students?skill=Programming', { token }); return Array.isArray(l) ? l : [] },
+    filters: { skill: 'Programming' },
   },
   {
     id: 'deans-lister', title: "Dean's Lister", description: 'Students with GPA 1.00 – 2.50',
     icon: GraduationCap, color: '#10b981',
-    run: async (token) => (await fetchAllProfiles(token)).filter(p => { const ah = p?.academicHistory; if (!ah?.length) return false; return isDeansLister(ah[ah.length-1]?.gpa) }),
+    filters: { gpaMin: 1.0, gpaMax: 2.5 },
   },
   {
     id: 'presidents-list', title: "President's List", description: 'Students with GPA 1.00 – 1.25',
     icon: Award, color: '#f59e0b',
-    run: async (token) => (await fetchAllProfiles(token)).filter(p => { const ah = p?.academicHistory; if (!ah?.length) return false; const g = Number(ah[ah.length-1]?.gpa); return !isNaN(g) && g >= 1.0 && g <= 1.25 }),
+    filters: { gpaMin: 1.0, gpaMax: 1.25 },
   },
   {
     id: 'with-activities', title: 'Students with Non-Academic Activities', description: 'Students who joined at least one activity',
     icon: Briefcase, color: '#0ea5e9',
-    run: async (token) => (await fetchAllProfiles(token)).filter(p => (p?.activities || []).length > 0),
+    filters: { hasActivities: true },
   },
   {
     id: 'with-affiliations', title: 'Students with Org Affiliations', description: 'Students who are members of organizations',
     icon: Star, color: '#8b5cf6',
-    run: async (token) => (await fetchAllProfiles(token)).filter(p => (p?.affiliations || []).length > 0),
+    filters: { hasAffiliations: true },
   },
   {
     id: 'with-violations', title: 'Students with Violations', description: 'Students with at least one recorded violation',
     icon: AlertTriangle, color: '#ef4444',
-    run: async (token) => (await fetchAllProfiles(token)).filter(p => (p?.violations || []).length > 0),
+    filters: { hasViolations: true },
   },
   {
     id: 'no-violations', title: 'Students with Clean Record', description: 'Students with zero violations',
     icon: Shield, color: '#10b981',
-    run: async (token) => (await fetchAllProfiles(token)).filter(p => (p?.violations || []).length === 0),
+    filters: { hasViolations: false },
   },
 ]
 
@@ -77,6 +70,16 @@ export default function Reports() {
   const [customResult, setCustomResult] = useState(null)
   const [customLoading, setCustomLoading] = useState(false)
   const [customError, setCustomError] = useState('')
+  const blockWheelNumberChange = (e) => e.currentTarget.blur()
+
+  const queryStudents = async (filters) => {
+    const res = await apiFetch('/api/reports/query-students', {
+      token,
+      method: 'POST',
+      body: filters,
+    })
+    return Array.isArray(res?.students) ? res.students : []
+  }
 
   const handleCustomQuery = async (e) => {
     e.preventDefault()
@@ -85,34 +88,14 @@ export default function Reports() {
     setCustomError('')
     setCustomResult(null)
     try {
-      const qs = new URLSearchParams()
-      if (customSkill) qs.append('skill', customSkill)
-      if (customCourse) qs.append('courseID', customCourse)
-
-      const list = await apiFetch(`/api/students?${qs.toString()}`, { token })
-      let filtered = Array.isArray(list) ? list : []
-
-      if (customYear) filtered = filtered.filter(s => String(s.yearLevel) === customYear)
-
-      // For GPA or activity filters, fetch full profiles
-      if (customGpa || customActivity) {
-        const profiles = await Promise.all(filtered.map(s => apiFetch(`/api/students/${s.studentID}`, { token })))
-        filtered = profiles.filter(p => {
-          if (customGpa) {
-            const ah = p?.academicHistory
-            if (!ah?.length) return false
-            const g = Number(ah[ah.length - 1]?.gpa)
-            if (isNaN(g) || g > parseFloat(customGpa)) return false
-          }
-          if (customActivity) {
-            const acts = p?.activities || []
-            const q = customActivity.toLowerCase()
-            if (!acts.some(a => (a.activityName || '').toLowerCase().includes(q) || (a.activityType || '').toLowerCase().includes(q))) return false
-          }
-          return true
-        })
+      const filters = {
+        ...(customSkill ? { skill: customSkill } : {}),
+        ...(customActivity ? { activity: customActivity } : {}),
+        ...(customGpa ? { gpaMax: Number(customGpa) } : {}),
+        ...(customCourse ? { courseID: Number(customCourse) } : {}),
+        ...(customYear ? { yearLevel: Number(customYear) } : {}),
       }
-
+      const filtered = await queryStudents(filters)
       setCustomResult(filtered)
     } catch (err) {
       setCustomError(err?.message || 'Failed to run query.')
@@ -125,7 +108,7 @@ export default function Reports() {
     const key = template.id
     setResults(prev => ({ ...prev, [key]: { loading: true, error: '', students: [] } }))
     try {
-      const students = await template.run(token)
+      const students = await queryStudents(template.filters || {})
       setResults(prev => ({ ...prev, [key]: { loading: false, error: '', students } }))
     } catch (err) {
       setResults(prev => ({ ...prev, [key]: { loading: false, error: err?.message || 'Failed.', students: [] } }))
@@ -223,8 +206,24 @@ export default function Reports() {
                   max="5"
                   placeholder="e.g. 1.75"
                   value={customGpa}
+                  onWheel={blockWheelNumberChange}
                   onChange={e => setCustomGpa(e.target.value)}
                 />
+              </div>
+              <div>
+                <label className="reports-query-label">Course</label>
+                <select
+                  className="reports-query-input"
+                  value={customCourse}
+                  onChange={e => setCustomCourse(e.target.value)}
+                >
+                  <option value="">All Courses</option>
+                  {courses.map(c => (
+                    <option key={c.courseID} value={c.courseID}>
+                      {c.courseCode} - {c.courseName}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="reports-query-label">Year Level</label>
