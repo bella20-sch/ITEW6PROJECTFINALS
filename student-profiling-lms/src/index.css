@@ -4451,6 +4451,43 @@ a {
   margin-bottom: 0.7rem;
 }
 
+.eligibility-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.eligibility-skill-picker {
+  display: block;
+}
+
+.eligibility-skill-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.eligibility-skill-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-secondary);
+  font-size: 0.8rem;
+}
+
+.eligibility-skill-chip button {
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
 .eligibility-count {
   font-size: 0.9rem;
   color: var(--color-text-secondary);

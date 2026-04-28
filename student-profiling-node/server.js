@@ -330,6 +330,19 @@ const toNumberOrNull = (value) => {
 };
 
 const toNormText = (value) => String(value || '').trim().toLowerCase();
+const uniqCaseInsensitive = (arr) => {
+    const seen = new Set();
+    const out = [];
+    (arr || []).forEach((item) => {
+        const raw = String(item || '').trim();
+        if (!raw) return;
+        const key = raw.toLowerCase();
+        if (seen.has(key)) return;
+        seen.add(key);
+        out.push(raw);
+    });
+    return out;
+};
 
 const latestByDate = (rows, dateKeys = ['updatedAt', 'createdAt', 'date', 'schoolYear']) => {
     if (!Array.isArray(rows) || rows.length === 0) return null;
@@ -440,12 +453,19 @@ const EligibilityRepository = {
     },
 
     scoreSkills(skillRows, requiredTags) {
-        const skillTexts = (skillRows || []).map((row) =>
+        const primarySkillNames = uniqCaseInsensitive(
+            (skillRows || []).map((row) => row?.skillName || row?.name || ''),
+        ).map((x) => x.toLowerCase());
+        const fallbackTexts = (skillRows || []).map((row) =>
             `${row?.skillName || row?.name || ''} ${row?.category || ''} ${row?.description || ''}`.toLowerCase(),
         );
         const matched = requiredTags.filter((tag) => {
-            const t = tag.toLowerCase();
-            return skillTexts.some((txt) => txt.includes(t));
+            const t = String(tag || '').trim().toLowerCase();
+            if (!t) return false;
+            // Prefer exact skill-name match for accurate filtering.
+            if (primarySkillNames.includes(t)) return true;
+            // Fallback to contains only when exact value is absent in source.
+            return fallbackTexts.some((txt) => txt.includes(t));
         });
         return { matchedCount: matched.length, matchedTags: matched };
     },
@@ -540,6 +560,30 @@ const EligibilityRepository = {
             students: rows,
         };
     },
+
+    listSkillTagOptions(db, user, { global = false } = {}) {
+        const scopedStudents = global ? [...(db.students || [])] : this.listStudentsForRole(db, user);
+        const allowedStudentIds = new Set(scopedStudents.map((s) => Number(s.studentID)));
+        const tags = new Set();
+
+        // Source 1: normalized top-level skills table (if present)
+        (db.skills || []).forEach((row) => {
+            if (!allowedStudentIds.has(Number(row.studentID))) return;
+            const skillName = String(row.skillName || row.name || '').trim();
+            if (skillName) tags.add(skillName);
+        });
+
+        // Source 2: embedded student.skills arrays (common in current JSON)
+        scopedStudents.forEach((student) => {
+            const rows = Array.isArray(student.skills) ? student.skills : [];
+            rows.forEach((row) => {
+                const skillName = String(row?.skillName || row?.name || '').trim();
+                if (skillName) tags.add(skillName);
+            });
+        });
+
+        return uniqCaseInsensitive([...tags]).sort((a, b) => a.localeCompare(b));
+    },
 };
 
 // --- AUTH ROUTE ---
@@ -632,6 +676,16 @@ app.post('/api/reports/smart-eligibility', authenticate, (req, res) => {
     const payload = req.body && typeof req.body === 'object' ? req.body : {};
     const result = EligibilityRepository.buildEligibleStudentReport(db, req.user, payload);
     return res.json(result);
+});
+
+app.get('/api/reports/smart-eligibility/options', authenticate, (req, res) => {
+    if (!ELIGIBILITY_ROLES.has(req.user?.role)) {
+        return res.status(403).json({ message: 'Only faculty or administrators can access this report.' });
+    }
+    const db = getDb();
+    const global = String(req.query.scope || '').toLowerCase() === 'global';
+    const skillTags = EligibilityRepository.listSkillTagOptions(db, req.user, { global });
+    return res.json({ skillTags });
 });
 
 /** Must be registered before `/api/meta/:type` or `dashboard-insights` is captured as :type and 404s. */
