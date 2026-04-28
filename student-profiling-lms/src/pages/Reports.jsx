@@ -70,6 +70,9 @@ export default function Reports() {
   const [customResult, setCustomResult] = useState(null)
   const [customLoading, setCustomLoading] = useState(false)
   const [customError, setCustomError] = useState('')
+  const [skillOptions, setSkillOptions] = useState([])
+  const [skillOptionsLoading, setSkillOptionsLoading] = useState(false)
+  const [reportScopeIds, setReportScopeIds] = useState(null)
   const blockWheelNumberChange = (e) => e.currentTarget.blur()
 
   const queryStudents = async (filters) => {
@@ -79,6 +82,13 @@ export default function Reports() {
       body: filters,
     })
     return Array.isArray(res?.students) ? res.students : []
+  }
+
+  const runAllTemplateReports = async (scopeIds = null) => {
+    const scoped = Array.isArray(scopeIds) && scopeIds.length > 0
+      ? { studentIDs: scopeIds }
+      : {}
+    await Promise.all(reportTemplates.map((template) => runReport(template, scoped)))
   }
 
   const handleCustomQuery = async (e) => {
@@ -97,6 +107,8 @@ export default function Reports() {
       }
       const filtered = await queryStudents(filters)
       setCustomResult(filtered)
+      const scopedIds = filtered.map((s) => Number(s.studentID)).filter((x) => Number.isFinite(x))
+      setReportScopeIds(scopedIds)
     } catch (err) {
       setCustomError(err?.message || 'Failed to run query.')
     } finally {
@@ -104,11 +116,11 @@ export default function Reports() {
     }
   }
 
-  const runReport = async (template) => {
+  const runReport = async (template, extraFilters = {}) => {
     const key = template.id
     setResults(prev => ({ ...prev, [key]: { loading: true, error: '', students: [] } }))
     try {
-      const students = await queryStudents(template.filters || {})
+      const students = await queryStudents({ ...(template.filters || {}), ...(extraFilters || {}) })
       setResults(prev => ({ ...prev, [key]: { loading: false, error: '', students } }))
     } catch (err) {
       setResults(prev => ({ ...prev, [key]: { loading: false, error: err?.message || 'Failed.', students: [] } }))
@@ -116,7 +128,29 @@ export default function Reports() {
   }
 
   useEffect(() => {
-    if (token) reportTemplates.forEach(t => runReport(t))
+    if (token) runAllTemplateReports(reportScopeIds)
+  }, [token, reportScopeIds])
+
+  useEffect(() => {
+    if (!token) return
+    let alive = true
+    setSkillOptionsLoading(true)
+    apiFetch('/api/reports/smart-eligibility/options?scope=global', { token })
+      .then((data) => {
+        if (!alive) return
+        const tags = Array.isArray(data?.skillTags) ? data.skillTags : []
+        setSkillOptions(tags)
+      })
+      .catch(() => {
+        if (!alive) return
+        setSkillOptions([])
+      })
+      .finally(() => {
+        if (alive) setSkillOptionsLoading(false)
+      })
+    return () => {
+      alive = false
+    }
   }, [token])
 
   const toggle = (template) => {
@@ -178,13 +212,18 @@ export default function Reports() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem', marginBottom: '0.75rem' }}>
               <div>
                 <label className="reports-query-label">Skill</label>
-                <input
-                  type="text"
+                <select
                   className="reports-query-input"
-                  placeholder="e.g. Basketball, Python"
                   value={customSkill}
                   onChange={e => setCustomSkill(e.target.value)}
-                />
+                >
+                  <option value="">
+                    {skillOptionsLoading ? 'Loading skills...' : 'All Skills'}
+                  </option>
+                  {skillOptions.map((skill) => (
+                    <option key={skill} value={skill}>{skill}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="reports-query-label">Activity</label>
@@ -242,7 +281,19 @@ export default function Reports() {
                 {customLoading ? 'Searching…' : <><Search size={15} /> Run Query</>}
               </button>
               {customResult !== null && (
-                <button type="button" className="btn btn-outline" onClick={() => { setCustomResult(null); setCustomSkill(''); setCustomActivity(''); setCustomGpa(''); setCustomCourse(''); setCustomYear('') }}>
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={async () => {
+                    setCustomResult(null)
+                    setCustomSkill('')
+                    setCustomActivity('')
+                    setCustomGpa('')
+                    setCustomCourse('')
+                    setCustomYear('')
+                    setReportScopeIds(null)
+                  }}
+                >
                   Clear
                 </button>
               )}
@@ -253,18 +304,12 @@ export default function Reports() {
 
           {customResult !== null && (
             <div style={{ marginTop: '1rem' }}>
-              <div className="report-results-header">{customResult.length} student{customResult.length !== 1 ? 's' : ''} found</div>
-              <div className="report-results-list">
-                {customResult.length === 0
-                  ? <p className="muted" style={{ padding: '0.5rem 0' }}>No students match these criteria.</p>
-                  : customResult.map(p => (
-                    <Link key={p.studentID} to={`/students/${p.studentID}`} className="report-result-item">
-                      <span className="report-result-name">{p.lastName}, {p.firstName} {p.middleName || ''}</span>
-                      <span className="report-result-meta">{formatMeta(p)}</span>
-                    </Link>
-                  ))
-                }
+              <div className="report-results-header">
+                {customResult.length} student{customResult.length !== 1 ? 's' : ''} found
               </div>
+              <p className="muted" style={{ padding: '0.35rem 0 0.1rem' }}>
+                Result details are shown in the predefined report sections below.
+              </p>
             </div>
           )}
         </div>
