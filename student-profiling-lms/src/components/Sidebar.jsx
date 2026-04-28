@@ -14,7 +14,6 @@ const navItems = [
   { path: 'courses', icon: BookOpen, label: 'Courses' },
   { path: 'faculty', icon: UserCircle, label: 'Faculty' },
   { path: 'reports', icon: FileBarChart, label: 'Reports & Queries' },
-  { path: 'reports/eligibility', icon: FileBarChart, label: 'Eligibility Report' },
 ]
 
 export default function Sidebar({ open, onClose, collapsed }) {
@@ -29,7 +28,7 @@ export default function Sidebar({ open, onClose, collapsed }) {
       { path: 'students', icon: Users, label: 'My Students' },
       { path: 'my-classes', icon: BookOpen, label: 'My Classes' },
       { path: 'workspace', icon: ClipboardList, label: 'Teaching Workspace' },
-      { path: 'reports/eligibility', icon: FileBarChart, label: 'Eligibility Report' },
+      { path: 'reports', icon: FileBarChart, label: 'Reports & Queries' },
     ]
   } else if (currentUser?.role === 'Student') {
     items = [
