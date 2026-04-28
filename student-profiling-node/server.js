@@ -645,19 +645,32 @@ const ReportsRepository = {
                     const pass = (row.activities || []).length > 0;
                     if (pass !== hasActivities) return false;
                 }
-                if (skillQ) {
-                    const hasSkill = (row.skills || []).some((s) => {
-                        const txt = `${s?.skillName || s?.name || ''} ${s?.category || ''} ${s?.description || ''}`.toLowerCase();
-                        return txt.includes(skillQ);
-                    });
-                    if (!hasSkill) return false;
-                }
+                const hasSkill = skillQ
+                    ? (row.skills || []).some((s) => {
+                          const txt = `${s?.skillName || s?.name || ''} ${s?.category || ''} ${s?.description || ''}`.toLowerCase();
+                          return txt.includes(skillQ);
+                      })
+                    : true;
+                if (skillQ && !activityQ && !hasSkill) return false;
                 if (activityQ) {
+                    const expandedActivityTerms = [activityQ];
+                    if (activityQ.includes('sport') || activityQ.includes('athlet')) {
+                        expandedActivityTerms.push(...ELIGIBILITY_PHYSICAL_KEYWORDS);
+                    }
+                    const matchesActivityTerm = (txt) => expandedActivityTerms.some((term) => txt.includes(term));
                     const hasActivity = (row.activities || []).some((a) => {
                         const txt = `${a?.activityName || ''} ${a?.activityType || ''} ${a?.description || ''}`.toLowerCase();
-                        return txt.includes(activityQ);
+                        return matchesActivityTerm(txt);
                     });
-                    if (!hasActivity) return false;
+                    // Some student profiles store "sports participation" primarily as skills.
+                    // Allow activity keyword matches against skill text as a practical fallback.
+                    const hasSkillActivityMatch = (row.skills || []).some((s) => {
+                        const txt = `${s?.skillName || s?.name || ''} ${s?.category || ''} ${s?.description || ''}`.toLowerCase();
+                        return matchesActivityTerm(txt);
+                    });
+                    const hasActivityLike = hasActivity || hasSkillActivityMatch;
+                    if (!skillQ && !hasActivityLike) return false;
+                    if (skillQ && !(hasSkill || hasActivityLike)) return false;
                 }
                 return true;
             })

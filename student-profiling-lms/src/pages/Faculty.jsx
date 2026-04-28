@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useParams, Navigate } from 'react-router-dom'
 import { useData } from '../context/DataContext'
 import { useAuth } from '../context/AuthContext'
@@ -27,6 +27,8 @@ export default function Faculty() {
   const [statusFilter, setStatusFilter] = useState('')
   const [sortOrder, setSortOrder] = useState('az')
   const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const [pageInput, setPageInput] = useState('1')
   const [busy, setBusy] = useState(false)
   const [confirm, setConfirm] = useState({ open: false, type: null, item: null })
   const [form, setForm] = useState({
@@ -124,6 +126,24 @@ export default function Faculty() {
       return sortOrder === 'az' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA)
     })
 
+  const PAGE_SIZE = 20
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const safePage = Math.min(page, totalPages)
+  const pageStart = (safePage - 1) * PAGE_SIZE
+  const pageRows = filtered.slice(pageStart, pageStart + PAGE_SIZE)
+
+  useEffect(() => {
+    setPage(1)
+  }, [search, sortOrder, statusFilter])
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages)
+  }, [page, totalPages])
+
+  useEffect(() => {
+    setPageInput(String(safePage))
+  }, [safePage])
+
   if (isFacultyUser) {
     if (!Number.isFinite(myFacultyId)) {
       return (
@@ -220,7 +240,7 @@ export default function Faculty() {
       </div>
 
       <div className="faculty-list" role="region" aria-labelledby="faculty-hero-title">
-        {filtered.map(f => (
+        {pageRows.map(f => (
           <div key={f.facultyID} className="faculty-row">
             <div className="faculty-icon" style={{ overflow: 'hidden' }}>
               {f.photo
@@ -250,6 +270,55 @@ export default function Faculty() {
         ))}
       </div>
       {!filtered.length && <div className="empty-state"><p>No faculty match your filters.</p></div>}
+      {filtered.length > 0 && (
+        <div className="students-pagination">
+          <button
+            type="button"
+            className="btn btn-outline"
+            disabled={safePage <= 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+          >
+            Previous
+          </button>
+          <span className="students-pagination-meta">
+            Page {safePage} of {totalPages}
+          </span>
+          <div className="students-pagination-jump">
+            <label htmlFor="faculty-page-jump" className="students-pagination-jump-label">
+              Go to
+            </label>
+            <input
+              id="faculty-page-jump"
+              type="number"
+              min={1}
+              max={totalPages}
+              value={pageInput}
+              onChange={(e) => setPageInput(e.target.value)}
+              onBlur={() => {
+                const parsed = Number.parseInt(pageInput, 10)
+                const nextPage = Number.isFinite(parsed) ? Math.min(totalPages, Math.max(1, parsed)) : safePage
+                setPage(nextPage)
+              }}
+              onKeyDown={(e) => {
+                if (e.key !== 'Enter') return
+                const parsed = Number.parseInt(pageInput, 10)
+                const nextPage = Number.isFinite(parsed) ? Math.min(totalPages, Math.max(1, parsed)) : safePage
+                setPage(nextPage)
+              }}
+              className="students-pagination-input"
+              aria-label="Go to faculty page number"
+            />
+          </div>
+          <button
+            type="button"
+            className="btn btn-outline"
+            disabled={safePage >= totalPages}
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+          >
+            Next
+          </button>
+        </div>
+      )}
 
       {isAdmin && (
         <Modal

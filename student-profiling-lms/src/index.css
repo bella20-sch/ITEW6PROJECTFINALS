@@ -4267,6 +4267,45 @@ a {
   box-shadow: 0 0 0 3px var(--color-accent-muted);
 }
 
+/* Toolbar row inside `.reports-grid` only (Custom Query card keeps default input sizing) */
+.reports-grid .report-card-header .reports-query-input {
+  padding: 0.5rem 0.6rem;
+  font-size: 0.875rem;
+  line-height: 1.35;
+}
+
+.reports-grid .report-card-header .report-card-action-btn.btn {
+  box-sizing: border-box;
+  padding: 0.5rem 0.55rem;
+  font-size: 0.875rem;
+  line-height: 1.35;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  gap: 0.25rem;
+}
+
+.reports-grid .report-card-header .report-card-action-btn.report-card-action-btn--icon {
+  padding: 0.5rem 0.45rem;
+}
+
+.reports-grid .report-card-header .report-card-print-delete {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.reports-grid .report-card-header .report-card-print-delete .report-card-action-btn {
+  width: 100%;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.reports-grid .report-card-header .report-card-print-delete + .report-card-action-btn.report-card-action-btn--icon {
+  margin-left: 0.35rem;
+}
+
 .reports-grid {
   display: flex;
   flex-direction: column;
