@@ -320,6 +320,228 @@ const computeStudentAssessmentItems = (db, tl, studentID) => {
 
 const normEmail = (v) => String(v || '').trim().toLowerCase();
 
+const ELIGIBILITY_ROLES = new Set(['Admin', 'Faculty']);
+const ELIGIBILITY_PHYSICAL_KEYWORDS = ['intramurals', 'sports', 'athletic', 'basketball', 'volleyball', 'soccer', 'badminton', 'track', 'pe'];
+const ACTIVE_EVENT_STATUSES = new Set(['active', 'assigned', 'ongoing', 'in_progress', 'in-progress', 'scheduled']);
+
+const toNumberOrNull = (value) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+};
+
+const toNormText = (value) => String(value || '').trim().toLowerCase();
+
+const latestByDate = (rows, dateKeys = ['updatedAt', 'createdAt', 'date', 'schoolYear']) => {
+    if (!Array.isArray(rows) || rows.length === 0) return null;
+    return [...rows].sort((a, b) => {
+        const aRaw = dateKeys.map((k) => a?.[k]).find((x) => x != null) || '';
+        const bRaw = dateKeys.map((k) => b?.[k]).find((x) => x != null) || '';
+        return String(bRaw).localeCompare(String(aRaw));
+    })[0];
+};
+
+const normalizeEligibilityFilters = (raw) => {
+    const safe = raw && typeof raw === 'object' ? raw : {};
+    const skillsRaw = Array.isArray(safe.skills?.tags) ? safe.skills.tags : Array.isArray(safe.skillTags) ? safe.skillTags : [];
+    return {
+        eventType: String(safe.eventType || 'General').trim(),
+        academic: {
+            gpaMax: toNumberOrNull(safe.academic?.gpaMax ?? safe.academic?.minGpa ?? safe.gpaMax),
+            gpaMin: toNumberOrNull(safe.academic?.gpaMin ?? safe.gpaMin),
+            subjectGradeMin: toNumberOrNull(safe.academic?.subjectGradeMin ?? safe.subjectGradeMin),
+            subjectName: String(safe.academic?.subjectName || safe.subjectName || '').trim(),
+            highGradesOnly: !!(safe.academic?.highGradesOnly ?? safe.highGradesOnly),
+        },
+        physical: {
+            requirePhysicalFit: !!(safe.physical?.requirePhysicalFit ?? safe.requirePhysicalFit),
+            minPhysicalActivities: toNumberOrNull(safe.physical?.minPhysicalActivities ?? safe.minPhysicalActivities) ?? 0,
+            keywords: Array.isArray(safe.physical?.keywords) ? safe.physical.keywords.map((x) => String(x || '')).filter(Boolean) : [],
+        },
+        skills: {
+            tags: skillsRaw.map((x) => String(x || '').trim()).filter(Boolean),
+            matchMode: String(safe.skills?.matchMode || safe.matchMode || 'any').toLowerCase() === 'all' ? 'all' : 'any',
+            minSkillScore: toNumberOrNull(safe.skills?.minSkillScore ?? safe.minSkillScore) ?? 0,
+        },
+        availability: {
+            mustBeAvailable: !!(safe.availability?.mustBeAvailable ?? safe.mustBeAvailable),
+            ignoredEventId: safe.availability?.ignoredEventId ?? safe.ignoredEventId ?? null,
+        },
+    };
+};
+
+const extractSubjectGradeRows = (academicRows) => {
+    if (!Array.isArray(academicRows)) return [];
+    const out = [];
+    academicRows.forEach((row) => {
+        const nested = Array.isArray(row?.subjectGrades)
+            ? row.subjectGrades
+            : Array.isArray(row?.grades)
+              ? row.grades
+              : [];
+        nested.forEach((g) => {
+            out.push({
+                subject: String(g?.subject || g?.subjectName || g?.course || '').trim(),
+                grade: toNumberOrNull(g?.grade ?? g?.value ?? g?.score),
+            });
+        });
+        if (row?.subjectName != null || row?.subject != null) {
+            out.push({
+                subject: String(row.subjectName || row.subject || '').trim(),
+                grade: toNumberOrNull(row.grade ?? row.finalGrade ?? row.score),
+            });
+        }
+    });
+    return out.filter((x) => x.subject || x.grade != null);
+};
+
+const EligibilityRepository = {
+    listStudentsForRole(db, user) {
+        if (user?.role === 'Faculty') {
+            const keys = facultyManagedSectionKeys(db, Number(user.id));
+            if (!keys.size) return [];
+            return (db.students || []).filter((student) => studentInFacultyManagedSections(student, keys));
+        }
+        return [...(db.students || [])];
+    },
+
+    getStudentContext(db, student) {
+        const sid = Number(student.studentID);
+        const academicRows = Array.isArray(student.academicHistory)
+            ? student.academicHistory
+            : (db.academic || []).filter((a) => Number(a.studentID) === sid);
+        const activityRows = Array.isArray(student.activities)
+            ? student.activities
+            : (db.activities || []).filter((a) => Number(a.studentID) === sid);
+        const skillRows = Array.isArray(student.skills)
+            ? student.skills
+            : (db.skills || []).filter((s) => Number(s.studentID) === sid);
+        const affiliationRows = Array.isArray(student.affiliations)
+            ? student.affiliations
+            : (db.affiliations || []).filter((a) => Number(a.studentID) === sid);
+        return { sid, academicRows, activityRows, skillRows, affiliationRows };
+    },
+
+    hasActiveEventConflict(db, sid, ignoredEventId) {
+        const explicitAssignments = (db.eventAssignments || []).filter((row) => Number(row.studentID) === Number(sid));
+        const activeAssignments = explicitAssignments.filter((row) => {
+            if (ignoredEventId != null && String(row.eventID) === String(ignoredEventId)) return false;
+            return ACTIVE_EVENT_STATUSES.has(toNormText(row.status));
+        });
+        if (activeAssignments.length > 0) return true;
+
+        const profileActivities = (db.activities || []).filter((row) => Number(row.studentID) === Number(sid));
+        return profileActivities.some((row) => {
+            const status = toNormText(row.status);
+            const activeByStatus = status ? ACTIVE_EVENT_STATUSES.has(status) : false;
+            const pendingEnd = row.endDate ? new Date(row.endDate).getTime() >= Date.now() : true;
+            if (ignoredEventId != null && String(row.eventID || row.activityID) === String(ignoredEventId)) return false;
+            return activeByStatus && pendingEnd;
+        });
+    },
+
+    scoreSkills(skillRows, requiredTags) {
+        const skillTexts = (skillRows || []).map((row) =>
+            `${row?.skillName || row?.name || ''} ${row?.category || ''} ${row?.description || ''}`.toLowerCase(),
+        );
+        const matched = requiredTags.filter((tag) => {
+            const t = tag.toLowerCase();
+            return skillTexts.some((txt) => txt.includes(t));
+        });
+        return { matchedCount: matched.length, matchedTags: matched };
+    },
+
+    scorePhysical(activityRows, physicalKeywords) {
+        const rows = Array.isArray(activityRows) ? activityRows : [];
+        const hitRows = rows.filter((row) => {
+            const text = `${row?.activityName || ''} ${row?.activityType || ''} ${row?.description || ''}`.toLowerCase();
+            return physicalKeywords.some((kw) => text.includes(kw));
+        });
+        return {
+            physicalActivitiesCount: hitRows.length,
+            latestPhysicalActivity: latestByDate(hitRows, ['activityDate', 'dateJoined', 'createdAt']),
+        };
+    },
+
+    evaluateStudent(db, student, filters) {
+        const ctx = this.getStudentContext(db, student);
+        const latestAcademic = latestByDate(ctx.academicRows, ['schoolYear', 'createdAt', 'updatedAt']);
+        const latestGpa = toNumberOrNull(latestAcademic?.gpa);
+        const subjectRows = extractSubjectGradeRows(ctx.academicRows);
+        const requiredSubject = toNormText(filters.academic.subjectName);
+
+        if (filters.academic.gpaMax != null && !(latestGpa != null && latestGpa <= filters.academic.gpaMax)) {
+            return null;
+        }
+        if (filters.academic.gpaMin != null && !(latestGpa != null && latestGpa >= filters.academic.gpaMin)) {
+            return null;
+        }
+        if (filters.academic.highGradesOnly && !(latestGpa != null && latestGpa <= 2.0)) {
+            return null;
+        }
+        if (filters.academic.subjectGradeMin != null) {
+            const candidateRows = requiredSubject
+                ? subjectRows.filter((row) => toNormText(row.subject).includes(requiredSubject))
+                : subjectRows;
+            const hasPassingSubject = candidateRows.some((row) => row.grade != null && row.grade >= filters.academic.subjectGradeMin);
+            if (!hasPassingSubject) return null;
+        }
+
+        const physicalKeywords = [
+            ...ELIGIBILITY_PHYSICAL_KEYWORDS,
+            ...filters.physical.keywords.map((x) => toNormText(x)),
+            toNormText(filters.eventType),
+        ].filter(Boolean);
+        const physicalScore = this.scorePhysical(ctx.activityRows, physicalKeywords);
+        if (filters.physical.requirePhysicalFit && physicalScore.physicalActivitiesCount <= 0) return null;
+        if (Number(physicalScore.physicalActivitiesCount) < Number(filters.physical.minPhysicalActivities || 0)) return null;
+
+        const skillScore = this.scoreSkills(ctx.skillRows, filters.skills.tags);
+        if (filters.skills.tags.length > 0) {
+            const hasSkills =
+                filters.skills.matchMode === 'all'
+                    ? skillScore.matchedCount === filters.skills.tags.length
+                    : skillScore.matchedCount > 0;
+            if (!hasSkills) return null;
+            if (skillScore.matchedCount < Number(filters.skills.minSkillScore || 0)) return null;
+        }
+
+        const hasConflict = this.hasActiveEventConflict(db, ctx.sid, filters.availability.ignoredEventId);
+        if (filters.availability.mustBeAvailable && hasConflict) return null;
+
+        return {
+            student: omitPassword(student),
+            eligibility: {
+                latestGpa,
+                latestAcademicStanding: latestAcademic?.academicStanding || '',
+                matchedSkillTags: skillScore.matchedTags,
+                matchedSkillCount: skillScore.matchedCount,
+                physicalActivitiesCount: physicalScore.physicalActivitiesCount,
+                latestPhysicalActivityName: physicalScore.latestPhysicalActivity?.activityName || '',
+                availabilityStatus: hasConflict ? 'assigned' : 'available',
+            },
+        };
+    },
+
+    buildEligibleStudentReport(db, user, rawFilters) {
+        const filters = normalizeEligibilityFilters(rawFilters);
+        const scopedStudents = this.listStudentsForRole(db, user);
+        const rows = scopedStudents
+            .map((student) => this.evaluateStudent(db, student, filters))
+            .filter(Boolean)
+            .sort(
+                (a, b) =>
+                    String(a.student.lastName || '').localeCompare(String(b.student.lastName || '')) ||
+                    String(a.student.firstName || '').localeCompare(String(b.student.firstName || '')),
+            );
+        return {
+            filters,
+            roleScope: user?.role === 'Faculty' ? 'faculty-own-students' : 'admin-all-students',
+            totalMatched: rows.length,
+            students: rows,
+        };
+    },
+};
+
 // --- AUTH ROUTE ---
 app.post('/api/auth/login', (req, res) => {
     const { email, password } = req.body;
@@ -401,6 +623,16 @@ app.post('/api/auth/logout', authenticate, (req, res) => {
 });
 
 app.get('/api/user', authenticate, (req, res) => res.json(req.user));
+
+app.post('/api/reports/smart-eligibility', authenticate, (req, res) => {
+    if (!ELIGIBILITY_ROLES.has(req.user?.role)) {
+        return res.status(403).json({ message: 'Only faculty or administrators can access this report.' });
+    }
+    const db = getDb();
+    const payload = req.body && typeof req.body === 'object' ? req.body : {};
+    const result = EligibilityRepository.buildEligibleStudentReport(db, req.user, payload);
+    return res.json(result);
+});
 
 /** Must be registered before `/api/meta/:type` or `dashboard-insights` is captured as :type and 404s. */
 app.get('/api/meta/dashboard-insights', authenticate, (req, res) => {

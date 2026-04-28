@@ -24,6 +24,7 @@ const misNavItems = [
   { path: '/mis/courses', end: false, icon: BookOpen, label: 'Courses' },
   { path: '/mis/faculty', end: false, icon: UserCircle, label: 'Faculty' },
   { path: '/mis/reports', end: false, icon: FileBarChart, label: 'Reports & queries' },
+  { path: '/mis/reports/eligibility', end: false, icon: FileBarChart, label: 'Eligibility report' },
 ]
 
 export default function MisSidebar({ open, onClose, collapsed }) {

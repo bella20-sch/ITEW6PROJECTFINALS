@@ -24,6 +24,7 @@ import StudentClassesList from './pages/StudentClassesList'
 import StudentClassSection from './pages/StudentClassSection'
 import StudentActivitiesHub from './pages/StudentActivitiesHub'
 import StudentMaterialsHub from './pages/StudentMaterialsHub'
+import SmartEligibilityReport from './pages/SmartEligibilityReport'
 
 export default function App() {
   return (
@@ -64,6 +65,7 @@ export default function App() {
         <Route path="faculty/:id" element={<Faculty />} />
         <Route path="faculty" element={<Faculty />} />
         <Route path="reports" element={<Reports />} />
+        <Route path="reports/eligibility" element={<SmartEligibilityReport />} />
       </Route>
 
       <Route
@@ -107,7 +109,8 @@ export default function App() {
         <Route path="courses" element={<RequireRole roles={['Admin', 'Faculty']}><Courses /></RequireRole>} />
         <Route path="faculty/:id" element={<RequireRole roles={['Admin', 'Faculty']}><Faculty /></RequireRole>} />
         <Route path="faculty" element={<RequireRole roles={['Admin', 'Faculty']}><Faculty /></RequireRole>} />
-        <Route path="reports" element={<RequireRole roles={['Admin']}><Reports /></RequireRole>} />
+        <Route path="reports" element={<RequireRole roles={['Admin', 'Faculty']}><Reports /></RequireRole>} />
+        <Route path="reports/eligibility" element={<RequireRole roles={['Admin', 'Faculty']}><SmartEligibilityReport /></RequireRole>} />
         <Route path="workspace" element={<RequireRole roles={['Faculty', 'Student']}><Workspace /></RequireRole>} />
         <Route path="classes/:teachingLoadId" element={<RequireRole roles={['Student']}><StudentClassSection /></RequireRole>} />
         <Route path="classes" element={<RequireRole roles={['Student']}><StudentClassesList /></RequireRole>} />
