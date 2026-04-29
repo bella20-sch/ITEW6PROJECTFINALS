@@ -126,10 +126,17 @@ export default function Faculty() {
       return sortOrder === 'az' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA)
     })
 
+  const clearFilters = () => {
+    setSearch('')
+    setStatusFilter('')
+    setSortOrder('az')
+    setPage(1)
+  }
+
   const PAGE_SIZE = 20
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
-  const safePage = Math.min(page, totalPages)
-  const pageStart = (safePage - 1) * PAGE_SIZE
+  const currentPage = Math.min(page, totalPages)
+  const pageStart = (currentPage - 1) * PAGE_SIZE
   const pageRows = filtered.slice(pageStart, pageStart + PAGE_SIZE)
 
   useEffect(() => {
@@ -141,8 +148,8 @@ export default function Faculty() {
   }, [page, totalPages])
 
   useEffect(() => {
-    setPageInput(String(safePage))
-  }, [safePage])
+    setPageInput(String(currentPage))
+  }, [currentPage])
 
   if (isFacultyUser) {
     if (!Number.isFinite(myFacultyId)) {
@@ -236,6 +243,12 @@ export default function Faculty() {
               { value: 'za', label: 'Z → A (Last Name)' },
             ]}
           />
+          <button type="button" className="btn btn-outline" onClick={clearFilters}>
+            Clear filters
+          </button>
+        </div>
+        <div className="students-results-meta" aria-live="polite">
+          Showing <strong>{filtered.length}</strong> result{filtered.length === 1 ? '' : 's'}
         </div>
       </div>
 
@@ -275,13 +288,13 @@ export default function Faculty() {
           <button
             type="button"
             className="btn btn-outline"
-            disabled={safePage <= 1}
+            disabled={currentPage <= 1}
             onClick={() => setPage((p) => Math.max(1, p - 1))}
           >
             Previous
           </button>
           <span className="students-pagination-meta">
-            Page {safePage} of {totalPages}
+            Page {currentPage} of {totalPages}
           </span>
           <div className="students-pagination-jump">
             <label htmlFor="faculty-page-jump" className="students-pagination-jump-label">
@@ -296,13 +309,14 @@ export default function Faculty() {
               onChange={(e) => setPageInput(e.target.value)}
               onBlur={() => {
                 const parsed = Number.parseInt(pageInput, 10)
-                const nextPage = Number.isFinite(parsed) ? Math.min(totalPages, Math.max(1, parsed)) : safePage
+                const nextPage = Number.isFinite(parsed) ? Math.min(totalPages, Math.max(1, parsed)) : currentPage
                 setPage(nextPage)
               }}
               onKeyDown={(e) => {
                 if (e.key !== 'Enter') return
+                e.preventDefault()
                 const parsed = Number.parseInt(pageInput, 10)
-                const nextPage = Number.isFinite(parsed) ? Math.min(totalPages, Math.max(1, parsed)) : safePage
+                const nextPage = Number.isFinite(parsed) ? Math.min(totalPages, Math.max(1, parsed)) : currentPage
                 setPage(nextPage)
               }}
               className="students-pagination-input"
@@ -312,7 +326,7 @@ export default function Faculty() {
           <button
             type="button"
             className="btn btn-outline"
-            disabled={safePage >= totalPages}
+            disabled={currentPage >= totalPages}
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
           >
             Next
