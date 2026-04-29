@@ -382,8 +382,8 @@ export default function Reports() {
       </header>
 
       {/* Custom Query */}
-      <div className="report-card open" style={{ marginBottom: '1.5rem' }}>
-        <div className="report-card-header" style={{ cursor: 'default' }}>
+      <div className="report-card report-card--custom-query open">
+        <div className="report-card-header report-card-header--static">
           <div className="report-icon">
             <Search size={22} strokeWidth={2} />
           </div>
@@ -394,7 +394,7 @@ export default function Reports() {
         </div>
         <div className="report-results">
           <form onSubmit={handleCustomQuery}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem', marginBottom: '0.75rem' }}>
+            <div className="reports-query-grid">
               <div>
                 <label className="reports-query-label">Skill</label>
                 <select
@@ -461,7 +461,7 @@ export default function Reports() {
                 </select>
               </div>
             </div>
-            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <div className="reports-query-actions">
               <button type="submit" className="btn btn-primary" disabled={customLoading}>
                 {customLoading ? 'Searching…' : <><Search size={15} /> Run Query</>}
               </button>
@@ -535,14 +535,17 @@ export default function Reports() {
 
           return (
             <div key={rep.id} className={`report-card ${isOpen ? 'open' : ''}`}>
-              <div className="report-card-header" style={{ cursor: 'default', justifyContent: 'space-between', gap: '0.75rem' }}>
+              <div className="report-card-header report-card-header--toolbar">
                 <div
-                  style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', flex: 1, minWidth: 0, cursor: 'pointer' }}
+                  className="report-card-header-main"
                   onClick={() => toggle(templateId)}
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') toggle(templateId)
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      toggle(templateId)
+                    }
                   }}
                 >
                   <div className="report-icon" style={{ background: `${effectiveTemplate.color}18`, color: effectiveTemplate.color }}>
@@ -556,48 +559,49 @@ export default function Reports() {
                     )}
                   </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                <div className="report-card-toolbar report-card-toolbar--saved">
                   <input
                     type="search"
-                    className="reports-query-input"
+                    className="reports-query-input report-card-search-input"
                     placeholder="Search students..."
                     value={searchQuery}
                     onChange={(e) => setReportSearch(templateId, e.target.value)}
                     onClick={(e) => e.stopPropagation()}
                     onMouseDown={(e) => e.stopPropagation()}
-                    style={{ width: 'min(100%, 220px)' }}
                   />
-                  <div className="report-card-print-delete">
+                  <div className="report-card-toolbar-actions">
+                    <div className="report-card-print-delete">
+                      <button
+                        type="button"
+                        className="btn btn-outline report-card-action-btn"
+                        onClick={() => exportCustomReportPdf(rep)}
+                        aria-label="Export report as PDF"
+                      >
+                        Print
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-outline report-card-action-btn"
+                        onClick={() => deleteCustomReport(rep.id)}
+                        aria-label="Delete saved report"
+                      >
+                        Delete
+                      </button>
+                    </div>
                     <button
                       type="button"
-                      className="btn btn-outline report-card-action-btn"
-                      onClick={() => exportCustomReportPdf(rep)}
-                      aria-label="Export report as PDF"
+                      className="btn btn-outline report-card-action-btn report-card-action-btn--icon"
+                      onClick={() => toggle(templateId)}
+                      aria-label="Toggle report"
                     >
-                      Print
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-outline report-card-action-btn"
-                      onClick={() => deleteCustomReport(rep.id)}
-                      aria-label="Delete saved report"
-                    >
-                      Delete
+                      <ChevronDown size={15} className={`report-chevron ${isOpen ? 'rotated' : ''}`} />
                     </button>
                   </div>
-                  <button
-                    type="button"
-                    className="btn btn-outline report-card-action-btn report-card-action-btn--icon"
-                    onClick={() => toggle(templateId)}
-                    aria-label="Toggle report"
-                  >
-                    <ChevronDown size={15} className={`report-chevron ${isOpen ? 'rotated' : ''}`} />
-                  </button>
                 </div>
               </div>
 
               {isOpen && (
-                <div className="report-results">
+                <div className="report-results report-results--scroll-safe">
                   <div className="report-results-header">
                     Qualified Students
                     {searchQuery.trim() ? (
@@ -639,9 +643,9 @@ export default function Reports() {
 
           return (
             <div key={template.id} className={`report-card ${isOpen ? 'open' : ''}`}>
-              <div className="report-card-header" style={{ cursor: 'default', justifyContent: 'space-between', gap: '0.75rem' }}>
+              <div className="report-card-header report-card-header--toolbar">
                 <div
-                  style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1, minWidth: 0, cursor: 'pointer' }}
+                  className="report-card-header-main"
                   onClick={() => toggle(template)}
                   role="button"
                   tabIndex={0}
@@ -665,16 +669,15 @@ export default function Reports() {
                     )}
                   </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexShrink: 0 }}>
+                <div className="report-card-toolbar report-card-toolbar--preset">
                   <input
                     type="search"
-                    className="reports-query-input"
+                    className="reports-query-input report-card-search-input"
                     placeholder="Search students..."
                     value={searchQuery}
                     onChange={(e) => setReportSearch(template.id, e.target.value)}
                     onClick={(e) => e.stopPropagation()}
                     onMouseDown={(e) => e.stopPropagation()}
-                    style={{ width: 'min(100%, 220px)' }}
                   />
                   <button
                     type="button"
@@ -688,7 +691,7 @@ export default function Reports() {
               </div>
 
               {isOpen && (
-                <div className="report-results">
+                <div className="report-results report-results--scroll-safe">
                   <div className="report-results-header">
                     Qualified Students
                     {searchQuery.trim() && !r?.loading && !r?.error && count > 0 ? (
