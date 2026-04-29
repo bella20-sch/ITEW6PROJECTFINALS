@@ -309,17 +309,51 @@ export default function Reports() {
     const ruleY = Math.max(21, 13 + titleLines.length * 5 + 6)
     doc.line(textStartX, ruleY, 283, ruleY)
 
+    const filterMaxW = 297 - textStartX - 14
     const compactFilterSummary = (filters.length ? filters : ['No explicit filters'])
       .map((line) => line.replace(/^Report Title:\s*/i, '').trim())
-      .join('  |  ')
-    const filterMaxW = 297 - textStartX - 14
-    const wrappedFilterLines = doc.splitTextToSize(`Filters: ${compactFilterSummary}`, filterMaxW)
+      .join(' | ')
+    const filterY = ruleY + 4
+    const filterLineGap = 3.35
+    const filterPrefix = 'Filters:'
     doc.setFontSize(8.5)
+    doc.setFont('helvetica', 'bold')
     doc.setTextColor(...orangeAccentSoft)
-    doc.text(wrappedFilterLines, textStartX, ruleY + 5)
+    const prefixW = doc.getTextWidth(filterPrefix)
+    doc.setFont('helvetica', 'normal')
+    const gapAfterPrefix = doc.getTextWidth(' ')
+    let remaining = compactFilterSummary.trim()
+    let lineY = filterY
 
-    const filterBlockH = 5 + (wrappedFilterLines.length - 1) * 4
-    const tableStartY = ruleY + filterBlockH + 2
+    if (!remaining.length) {
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(...orangeAccentSoft)
+      doc.text(filterPrefix, textStartX, lineY)
+    }
+
+    while (remaining.length > 0) {
+      const availW =
+        lineY === filterY ? filterMaxW - prefixW - gapAfterPrefix : filterMaxW
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(...textPrimary)
+      const chunkLines = doc.splitTextToSize(remaining, availW)
+      const lineText = chunkLines[0]
+      if (!lineText?.length) break
+      if (lineY === filterY) {
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(...orangeAccentSoft)
+        doc.text(filterPrefix, textStartX, lineY)
+        doc.setFont('helvetica', 'normal')
+        doc.setTextColor(...textPrimary)
+        doc.text(lineText, textStartX + prefixW + gapAfterPrefix, lineY)
+      } else {
+        doc.text(lineText, textStartX, lineY)
+      }
+      remaining = remaining.slice(lineText.length).replace(/^\s+/, '')
+      if (remaining.length > 0) lineY += filterLineGap
+    }
+
+    const tableStartY = lineY + filterLineGap + 1
 
     autoTable(doc, {
       startY: tableStartY,
