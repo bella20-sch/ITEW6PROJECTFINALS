@@ -31,6 +31,9 @@ export default function MisSidebar({ open, onClose, collapsed }) {
   const navigate = useNavigate()
   const { showToast } = useToast()
   const [loggingOut, setLoggingOut] = useState(false)
+  const now = new Date()
+  const schoolYearStart = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1
+  const schoolYearLabel = `School Year ${schoolYearStart}-${schoolYearStart + 1}`
 
   const handleLogout = async () => {
     onClose()
@@ -60,7 +63,7 @@ export default function MisSidebar({ open, onClose, collapsed }) {
           />
           <div className="sidebar-brand-text">
             <span className="sidebar-title sidebar-title--portal">MIS Console</span>
-            <span className="sidebar-school-year">School Year 2024-2025</span>
+            <span className="sidebar-school-year">{schoolYearLabel}</span>
           </div>
         </div>
         <nav className="sidebar-nav">

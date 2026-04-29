@@ -21,6 +21,9 @@ export default function Sidebar({ open, onClose, collapsed }) {
   const navigate = useNavigate()
   const { showToast } = useToast()
   const [loggingOut, setLoggingOut] = useState(false)
+  const now = new Date()
+  const schoolYearStart = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1
+  const schoolYearLabel = `School Year ${schoolYearStart}-${schoolYearStart + 1}`
   let items = navItems
   if (currentUser?.role === 'Faculty') {
     items = [
@@ -79,7 +82,7 @@ export default function Sidebar({ open, onClose, collapsed }) {
         <div className="sidebar-brand-text">
           <span className={portalTitleClass}>{portalTitle}</span>
           {(currentUser?.role === 'Faculty' || currentUser?.role === 'Student') && (
-            <span className="sidebar-school-year">School Year 2024-2025</span>
+            <span className="sidebar-school-year">{schoolYearLabel}</span>
           )}
         </div>
       </div>
