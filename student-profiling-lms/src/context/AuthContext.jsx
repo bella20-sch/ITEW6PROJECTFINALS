@@ -111,6 +111,25 @@ export function AuthProvider({ children }) {
       }
     }
 
+    const changeFirstLoginPassword = async ({ currentPassword, newPassword }) => {
+      try {
+        const res = await apiFetch('/api/auth/first-login-password', {
+          method: 'POST',
+          token,
+          body: { currentPassword, newPassword },
+        })
+        const nextUser = {
+          ...(currentUser || {}),
+          ...(res?.user || {}),
+          mustChangePassword: false,
+        }
+        setCurrentUser(nextUser)
+        return { ok: true, user: nextUser }
+      } catch (e) {
+        return { ok: false, error: e?.message || 'Unable to update password.' }
+      }
+    }
+
     return {
       ready,
       token,
@@ -120,6 +139,7 @@ export function AuthProvider({ children }) {
       recheckServer,
       login,
       logout,
+      changeFirstLoginPassword,
     }
   }, [currentUser, ready, recheckServer, serverReachable, token])
 

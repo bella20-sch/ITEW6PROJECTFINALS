@@ -24,11 +24,20 @@ import StudentClassesList from './pages/StudentClassesList'
 import StudentClassSection from './pages/StudentClassSection'
 import StudentActivitiesHub from './pages/StudentActivitiesHub'
 import StudentMaterialsHub from './pages/StudentMaterialsHub'
+import FirstLoginPassword from './pages/FirstLoginPassword'
 
 export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route
+        path="/first-login-password"
+        element={
+          <RequireAuth>
+            <FirstLoginPassword />
+          </RequireAuth>
+        }
+      />
 
       <Route
         path="/mis"

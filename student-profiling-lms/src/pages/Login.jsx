@@ -58,6 +58,10 @@ export default function Login() {
     showToast('Login successful. Redirecting...', 'success')
 
     const role = res.user?.role
+    if (res.user?.mustChangePassword) {
+      navigate('/first-login-password', { replace: true })
+      return
+    }
     let target = homePathForRole(role)
     if (role !== 'Admin' && from && from !== '/login') {
       if (String(from).startsWith('/mis')) target = '/'
@@ -83,6 +87,9 @@ export default function Login() {
   }
 
   if (isAuthenticated && currentUser) {
+    if (currentUser.mustChangePassword) {
+      return <Navigate to="/first-login-password" replace />
+    }
     return <Navigate to={homePathForRole(currentUser.role)} replace />
   }
 

@@ -319,6 +319,7 @@ const computeStudentAssessmentItems = (db, tl, studentID) => {
 };
 
 const normEmail = (v) => String(v || '').trim().toLowerCase();
+const isStrongEnoughPassword = (v) => String(v || '').length >= 6;
 
 const ELIGIBILITY_ROLES = new Set(['Admin', 'Faculty']);
 const ELIGIBILITY_PHYSICAL_KEYWORDS = ['intramurals', 'sports', 'athletic', 'basketball', 'volleyball', 'soccer', 'badminton', 'track', 'pe'];
@@ -704,6 +705,7 @@ app.post('/api/auth/login', (req, res) => {
                 firstName: admin.firstName,
                 lastName: admin.lastName,
                 name: [admin.firstName, admin.lastName].filter(Boolean).join(' ').trim(),
+                mustChangePassword: !!admin.mustChangePassword,
             },
         });
     }
@@ -727,6 +729,7 @@ app.post('/api/auth/login', (req, res) => {
                 lastName: faculty.lastName,
                 name: [faculty.firstName, faculty.lastName].filter(Boolean).join(' ').trim(),
                 photo: faculty.photo || '',
+                mustChangePassword: !!faculty.mustChangePassword,
             },
         });
     }
@@ -751,6 +754,7 @@ app.post('/api/auth/login', (req, res) => {
                 lastName: student.lastName,
                 name: [student.firstName, student.lastName].filter(Boolean).join(' ').trim(),
                 photo: student.photo || '',
+                mustChangePassword: !!student.mustChangePassword,
             },
         });
     }
@@ -760,6 +764,57 @@ app.post('/api/auth/login', (req, res) => {
 
 app.post('/api/auth/logout', authenticate, (req, res) => {
     return res.json({ ok: true });
+});
+
+app.post('/api/auth/first-login-password', authenticate, (req, res) => {
+    const currentPassword = String(req.body?.currentPassword || '');
+    const newPassword = String(req.body?.newPassword || '');
+    if (!currentPassword || !newPassword) {
+        return res.status(400).json({ message: 'Current and new password are required.' });
+    }
+    if (!isStrongEnoughPassword(newPassword)) {
+        return res.status(400).json({ message: 'Password must be at least 6 characters.' });
+    }
+    if (currentPassword === newPassword) {
+        return res.status(400).json({ message: 'New password must be different from current password.' });
+    }
+
+    const db = getDb();
+    let account = null;
+    if (req.user?.role === 'Admin') {
+        account = (db.admins || []).find((x) => Number(x.adminID) === Number(req.user.id));
+    } else if (req.user?.role === 'Faculty') {
+        account = (db.faculty || []).find((x) => Number(x.facultyID) === Number(req.user.id));
+    } else if (req.user?.role === 'Student') {
+        account = (db.students || []).find((x) => Number(x.studentID) === Number(req.user.id));
+    }
+    if (!account) return res.status(404).json({ message: 'Account not found.' });
+    if (!account.mustChangePassword) {
+        return res.status(400).json({ message: 'Password update is not required for this account.' });
+    }
+    if (String(account.password || '') !== currentPassword) {
+        return res.status(400).json({ message: 'Current password is incorrect.' });
+    }
+
+    account.password = newPassword;
+    account.mustChangePassword = false;
+    account.passwordChangedAt = new Date().toISOString();
+    saveDb(db);
+
+    return res.json({
+        ok: true,
+        user: {
+            id: req.user.id,
+            role: req.user.role,
+            email: account.email,
+            firstName: account.firstName,
+            lastName: account.lastName,
+            name: [account.firstName, account.lastName].filter(Boolean).join(' ').trim(),
+            studentID: req.user.role === 'Student' ? account.studentID : undefined,
+            photo: account.photo || '',
+            mustChangePassword: false,
+        },
+    });
 });
 
 app.get('/api/user', authenticate, (req, res) => res.json(req.user));
@@ -910,6 +965,9 @@ app.post('/api/meta/:type', authenticate, (req, res) => {
     // For simplicity just appending body
     const idKey = type.replace(/s$/, '') + 'ID';
     const newItem = { [idKey]: nextId, ...req.body };
+    if (type === 'faculty' && newItem.password != null) {
+        newItem.mustChangePassword = true;
+    }
     db[type].push(newItem);
     saveDb(db);
     return res.json(newItem);
@@ -1122,6 +1180,7 @@ app.post('/api/students', authenticate, (req, res) => {
     const db = getDb();
     const nextId = (db.students.length > 0 ? Math.max(...db.students.map(s => s.studentID)) : 0) + 1;
     const newStudent = { studentID: nextId, ...req.body };
+    if (newStudent.password != null) newStudent.mustChangePassword = true;
     db.students.push(newStudent);
     saveDb(db);
     return res.status(201).json({
@@ -1246,6 +1305,7 @@ app.post('/api/admin/students', authenticate, requireAdmin, (req, res) => {
         courseID: crs,
         departmentID: dept,
         adviserFacultyID: adv,
+        mustChangePassword: true,
     };
     db.students.push(newStudent);
     saveDb(db);
@@ -1303,6 +1363,7 @@ app.post('/api/admin/faculty', authenticate, requireAdmin, (req, res) => {
         courseID: crs,
         section: sec,
         photo: '',
+        mustChangePassword: true,
     };
     db.faculty.push(newFaculty);
     saveDb(db);
