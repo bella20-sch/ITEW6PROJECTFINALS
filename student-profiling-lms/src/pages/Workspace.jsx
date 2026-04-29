@@ -578,16 +578,14 @@ export default function Workspace() {
         </h3>
         {isFaculty && assignments.length > 1 && (
           <div className="workspace-filter-row">
-            <label className="muted">
-              Class
-              <select value={activeFacultyTl} onChange={(e) => setActiveFacultyTl(e.target.value)}>
-                {teachingOptions.map((o) => (
-                  <option key={`flt-${o.value}`} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <span className="workspace-filter-label muted">Class</span>
+            <FilterDropdown
+              ariaLabel="Filter activities by class"
+              value={activeFacultyTl}
+              onChange={setActiveFacultyTl}
+              placeholder="Select class"
+              options={teachingOptions}
+            />
           </div>
         )}
         {!filteredFacultyActivities.length && <p className="muted workspace-empty">No class activities yet.</p>}
